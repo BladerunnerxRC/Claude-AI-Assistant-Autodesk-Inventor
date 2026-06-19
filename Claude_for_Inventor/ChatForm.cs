@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
@@ -146,6 +147,9 @@ namespace ClaudeForInventor
                          "Ask anything about your Inventor design. " +
                          "I can generate iLogic rules, explain features, audit parameters, and more.\n" +
                          "Press Enter to send · Shift+Enter for a newline.");
+
+            Load       += (_, __) => InstallKeyboardHook();
+            FormClosed += (_, __) => UninstallKeyboardHook();
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -356,6 +360,66 @@ namespace ClaudeForInventor
             _copyCodeBtn.Enabled   = true;
             _copyCodeBtn.Text      = $"Copy {_lastCodeLanguage}";
             _copyCodeBtn.BackColor = Color.FromArgb(45, 100, 55);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Keyboard hook – Inventor owns the message pump so ProcessCmdKey never
+        // fires. WH_KEYBOARD_LL intercepts Space/Delete before Inventor's
+        // accelerator table can eat them.
+        // ─────────────────────────────────────────────────────────────────────
+
+        private const int WH_KEYBOARD_LL = 13;
+        private const int WM_KEYDOWN     = 0x0100;
+        private const int VK_SPACE       = 0x20;
+        private const int VK_DELETE      = 0x2E;
+
+        [DllImport("user32.dll")] private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+        [DllImport("user32.dll")] private static extern bool   UnhookWindowsHookEx(IntPtr hhk);
+        [DllImport("user32.dll")] private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+        private LowLevelKeyboardProc? _hookProc;   // field ref prevents GC
+        private IntPtr _hookHandle = IntPtr.Zero;
+
+        private void InstallKeyboardHook()
+        {
+            _hookProc   = OnKeyboardHook;
+            _hookHandle = SetWindowsHookEx(WH_KEYBOARD_LL, _hookProc, IntPtr.Zero, 0);
+        }
+
+        private void UninstallKeyboardHook()
+        {
+            if (_hookHandle != IntPtr.Zero)
+            {
+                UnhookWindowsHookEx(_hookHandle);
+                _hookHandle = IntPtr.Zero;
+            }
+        }
+
+        private IntPtr OnKeyboardHook(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0 && (int)wParam == WM_KEYDOWN && _inputBox.Focused)
+            {
+                int vk = Marshal.ReadInt32(lParam);
+                if (vk == VK_SPACE)
+                {
+                    _inputBox.SelectedText = " ";
+                    return (IntPtr)1;   // suppress — don't let Inventor see it
+                }
+                if (vk == VK_DELETE)
+                {
+                    if (_inputBox.SelectionLength > 0)
+                        _inputBox.SelectedText = string.Empty;
+                    else if (_inputBox.SelectionStart < _inputBox.Text.Length)
+                    {
+                        int pos = _inputBox.SelectionStart;
+                        _inputBox.Text           = _inputBox.Text.Remove(pos, 1);
+                        _inputBox.SelectionStart = pos;
+                    }
+                    return (IntPtr)1;
+                }
+            }
+            return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
         }
 
         // ─────────────────────────────────────────────────────────────────────
