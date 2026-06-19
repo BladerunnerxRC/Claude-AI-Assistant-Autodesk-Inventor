@@ -19,50 +19,67 @@ Open a chat panel from **Tools → Claude AI** in any Part, Assembly, or Drawing
 
 | Requirement | Version |
 |---|---|
-| Autodesk Inventor | 2024 or later (v28+) |
-| Visual Studio | 2022 (Community is fine) |
-| .NET Framework | 4.8 |
+| Autodesk Inventor | 2027 (adjust path below for other versions) |
+| .NET SDK | 9.0+ (`dotnet build` CLI) or Visual Studio 2022 |
+| .NET Framework | 4.8 (target runtime — ships with Windows) |
 | Anthropic API key | [console.anthropic.com/keys](https://console.anthropic.com/keys) |
 
 ---
 
 ## Build
 
-1. **Set Inventor path** in `ClaudeForInventor.csproj`:
+### 1. Set your Inventor path
 
-   ```xml
-   <InventorBin>C:\Program Files\Autodesk\Inventor 2025\Bin\</InventorBin>
-   ```
+Edit `ClaudeForInventor.csproj` and update `<InventorBin>` to match your installation:
 
-2. Open the solution in Visual Studio 2022.
+```xml
+<InventorBin>C:\Program Files\Autodesk\Inventor 2027\Bin\</InventorBin>
+```
 
-3. Build → **Release** (x64).
+This path is used to resolve both `Autodesk.Inventor.Interop.dll` and `stdole.dll`.
 
-   The post-build step runs `regasm.exe` automatically to register the COM class.
-   If it fails (needs elevation), run manually:
+### 2. Build (CLI — recommended)
 
-      ```powershell
-      # Run as Administrator
-      & "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\regasm.exe" `
-         "bin\Release\net48\ClaudeForInventor.dll" /codebase /nologo
-      ```
+Open an **elevated (Administrator) PowerShell** terminal in the project folder, then:
+
+```powershell
+dotnet build -c Release
+```
+
+Running as Administrator allows the post-build `regasm.exe` step to write the COM
+registration directly. If the build succeeded but regasm printed a warning about
+`Autodesk.Inventor.Interop` not being found, register manually (step 3).
+
+### 3. Register COM (if regasm failed or you built without elevation)
+
+Open an **Administrator** PowerShell and run:
+
+```powershell
+# Add Inventor's Bin to PATH so regasm can resolve Autodesk.Inventor.Interop
+$env:PATH += ";C:\Program Files\Autodesk\Inventor 2027\Bin"
+
+& "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\regasm.exe" `
+   "C:\<full-path-to-project>\bin\Release\net48\ClaudeForInventor.dll" `
+   /codebase /nologo
+```
+
+> The `/codebase` flag is required because the assembly is not in the GAC.
+> The unsigned-assembly warning it produces can be ignored for local development.
 
 ---
 
 ## Install
 
-Copy two files to Inventor's user add-ins folder:
+Copy these files to Inventor's user add-ins folder:
 
-```
-%APPDATA%\Autodesk\Inventor 2025\Addins\
+```text
+%APPDATA%\Autodesk\Inventor 2027\Addins\
     ClaudeForInventor.dll
     ClaudeForInventor.addin
+    Newtonsoft.Json.dll        ← from bin\Release\net48\
 ```
 
-Also copy `Newtonsoft.Json.dll` from `bin\Release\net48\` to the same folder  
-(or place it next to the DLL anywhere on `PATH`).
-
-> **Tip:** For a shared install, use `C:\ProgramData\Autodesk\Inventor 2025\Addins\` instead.
+> **Tip:** For a machine-wide install, use `C:\ProgramData\Autodesk\Inventor 2027\Addins\` instead.
 
 ---
 

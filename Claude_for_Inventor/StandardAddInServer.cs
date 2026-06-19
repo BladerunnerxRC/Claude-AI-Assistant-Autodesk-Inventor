@@ -75,7 +75,7 @@ namespace ClaudeForInventor
             {
                 try
                 {
-                    var ribbon = InventorApp!.UserInterface.Ribbons[ribbonId];
+                    var ribbon = InventorApp!.UserInterfaceManager.Ribbons[ribbonId];
                     var tab = ribbon.RibbonTabs["id_TabTools"];
                     var panelId = $"ClaudeAI_Panel_{ribbonId}";
                     var panel = tab.RibbonPanels.Add("Claude AI", panelId,
@@ -109,11 +109,11 @@ namespace ClaudeForInventor
             using var bmp = new Bitmap(32, 32);
             using (var g = Graphics.FromImage(bmp))
             {
-                g.Clear(Color.FromArgb(204, 75, 55));           // Anthropic coral
+                g.Clear(System.Drawing.Color.FromArgb(204, 75, 55));   // Anthropic coral
                 g.FillEllipse(Brushes.White,
                     new RectangleF(4, 4, 24, 24));
                 using var f = new Font("Segoe UI", 11f, FontStyle.Bold);
-                g.DrawString("C", f, new SolidBrush(Color.FromArgb(204, 75, 55)),
+                g.DrawString("C", f, new SolidBrush(System.Drawing.Color.FromArgb(204, 75, 55)),
                     new PointF(9f, 7f));
             }
             return AxHostConverter.GetIPictureDisp(bmp);

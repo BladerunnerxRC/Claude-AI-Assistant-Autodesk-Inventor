@@ -78,7 +78,7 @@ namespace ClaudeForInventor
             {
                 if (p.ParameterType != ParameterTypeEnum.kUserParameter) continue;
                 paramCount++;
-                try { paramSb.AppendLine($"  {p.Name} = {p.Expression}  [{p.Units}]"); }
+                try { paramSb.AppendLine($"  {p.Name} = {p.Expression}  [{p.get_Units()}]"); }
                 catch { /* skip individual unreadable param */ }
             }
             if (paramCount > 0)
@@ -94,7 +94,7 @@ namespace ClaudeForInventor
             {
                 if (p.ParameterType == ParameterTypeEnum.kUserParameter) continue;
                 if (++modelCount > 10) break;
-                try { modelSb.AppendLine($"  {p.Name} = {p.Expression}  [{p.Units}]"); }
+                try { modelSb.AppendLine($"  {p.Name} = {p.Expression}  [{p.get_Units()}]"); }
                 catch { }
             }
             if (modelCount > 0)
@@ -116,7 +116,7 @@ namespace ClaudeForInventor
             // ── Active Sketch (if any) ────────────────────────────────────────
             try
             {
-                var editObj = part.Application.ActiveEditObject;
+                var editObj = StandardAddInServer.InventorApp?.ActiveEditObject;
                 if (editObj is PlanarSketch sketch)
                     sb.AppendLine($"\nActive Sketch: {sketch.Name}  " +
                         $"({sketch.SketchLines.Count} lines, " +

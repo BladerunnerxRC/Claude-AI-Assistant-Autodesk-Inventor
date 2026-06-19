@@ -23,8 +23,14 @@
       <EmbedInteropTypes>false</EmbedInteropTypes>
       <Private>false</Private>
     </Reference>
-    <!-- stdole is in the GAC; required for IPictureDisp icon conversion -->
-    <Reference Include="stdole" />
+    <!-- stdole: ships with Inventor; required for IPictureDisp icon conversion -->
+    <Reference Include="stdole">
+      <HintPath>$(InventorBin)stdole.dll</HintPath>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+      <Private>false</Private>
+    </Reference>
+    <!-- System.Net.Http must be referenced explicitly in net48 SDK-style projects -->
+    <Reference Include="System.Net.Http" />
   </ItemGroup>
 
   <ItemGroup>
