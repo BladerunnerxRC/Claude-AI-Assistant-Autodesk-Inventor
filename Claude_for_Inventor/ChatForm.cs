@@ -1,0 +1,390 @@
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Text;
+using System.Windows.Forms;
+
+namespace ClaudeForInventor
+{
+    internal sealed class ChatForm : Form
+    {
+        // ── State ─────────────────────────────────────────────────────────────
+        private readonly ClaudeApiClient         _api     = new ClaudeApiClient();
+        private readonly List<ChatMessage>       _history = new List<ChatMessage>();
+        private string  _documentContext = string.Empty;
+        private string? _lastCode;
+        private string  _lastCodeLanguage = "Code";
+
+        // ── Controls ──────────────────────────────────────────────────────────
+        private readonly RichTextBox           _chatBox;
+        private readonly TextBox               _inputBox;
+        private readonly Button                _sendBtn;
+        private readonly Button                _newChatBtn;
+        private readonly Button                _copyCodeBtn;
+        private readonly Button                _settingsBtn;
+        private readonly Label                 _contextLabel;
+        private readonly ToolStripStatusLabel  _statusLabel;
+        private readonly ToolStripStatusLabel  _modelLabel;
+
+        // ── Colors ────────────────────────────────────────────────────────────
+        private static readonly Color BgBase    = Color.FromArgb(24, 24, 24);
+        private static readonly Color BgPanel   = Color.FromArgb(34, 34, 34);
+        private static readonly Color BgInput   = Color.FromArgb(42, 42, 42);
+        private static readonly Color BgToolbar = Color.FromArgb(28, 28, 28);
+        private static readonly Color Coral     = Color.FromArgb(204, 75, 55);
+        private static readonly Color UserBlue  = Color.FromArgb(130, 190, 255);
+        private static readonly Color TextMain  = Color.FromArgb(218, 218, 218);
+        private static readonly Color TextDim   = Color.FromArgb(110, 110, 110);
+        private static readonly Color CodeGreen = Color.FromArgb(180, 220, 170);
+
+        // ─────────────────────────────────────────────────────────────────────
+
+        public ChatForm()
+        {
+            Text            = "Claude AI — Inventor Assistant";
+            Size            = new Size(540, 720);
+            MinimumSize     = new Size(400, 500);
+            StartPosition   = FormStartPosition.Manual;
+            Location        = new System.Drawing.Point(
+                Screen.PrimaryScreen.WorkingArea.Right - 560,
+                Screen.PrimaryScreen.WorkingArea.Top   + 40);
+            BackColor       = BgBase;
+            ForeColor       = TextMain;
+            Font            = new Font("Segoe UI", 9f);
+            ShowInTaskbar   = false;
+
+            // ── Status strip ─────────────────────────────────────────────────
+            var statusStrip = new StatusStrip { BackColor = Color.FromArgb(18, 18, 18), SizingGrip = false };
+            _statusLabel = new ToolStripStatusLabel("Ready") { ForeColor = TextDim, Spring = true, TextAlign = ContentAlignment.MiddleLeft };
+            _modelLabel  = new ToolStripStatusLabel(ClaudeApiClient.Model) { ForeColor = Color.FromArgb(80, 80, 80) };
+            statusStrip.Items.Add(_statusLabel);
+            statusStrip.Items.Add(_modelLabel);
+
+            // ── Toolbar ──────────────────────────────────────────────────────
+            var toolbar = new Panel { Height = 36, BackColor = BgToolbar, Padding = new Padding(6, 4, 6, 0) };
+            _newChatBtn  = MakeToolBtn("New Chat",  0);
+            _copyCodeBtn = MakeToolBtn("Copy Code", 84);
+            _settingsBtn = MakeToolBtn("⚙ Settings", 168);
+            _copyCodeBtn.Enabled = false;
+            _newChatBtn .Click += (_, __) => ClearChat();
+            _copyCodeBtn.Click += OnCopyCode;
+            _settingsBtn.Click += (_, __) => { using var d = new SettingsDialog(); d.ShowDialog(this); };
+            toolbar.Controls.AddRange(new Control[] { _newChatBtn, _copyCodeBtn, _settingsBtn });
+
+            // ── Input panel ───────────────────────────────────────────────────
+            var inputPanel = new Panel { Height = 90, BackColor = BgPanel, Padding = new Padding(8) };
+            _inputBox = new TextBox
+            {
+                Multiline   = true,
+                BackColor   = BgInput,
+                ForeColor   = TextMain,
+                BorderStyle = BorderStyle.None,
+                ScrollBars  = ScrollBars.Vertical,
+                Font        = new Font("Segoe UI", 9.5f),
+                Dock        = DockStyle.Fill,
+                AcceptsReturn = true        // Shift+Enter = newline; Enter = send (handled below)
+            };
+            _inputBox.KeyDown += OnInputKeyDown;
+
+            _sendBtn = new Button
+            {
+                Text      = "Send",
+                Width     = 64,
+                Dock      = DockStyle.Right,
+                BackColor = Coral,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Cursor    = Cursors.Hand
+            };
+            _sendBtn.FlatAppearance.BorderSize = 0;
+            _sendBtn.FlatAppearance.MouseOverBackColor = Color.FromArgb(220, 95, 70);
+            _sendBtn.Click += (_, __) => SendMessage();
+            inputPanel.Controls.Add(_inputBox);
+            inputPanel.Controls.Add(_sendBtn);
+
+            // ── Context panel ─────────────────────────────────────────────────
+            var contextPanel = new Panel { Height = 40, BackColor = Color.FromArgb(30, 38, 48), Padding = new Padding(10, 6, 10, 6) };
+            _contextLabel = new Label
+            {
+                Dock      = DockStyle.Fill,
+                ForeColor = Color.FromArgb(130, 180, 230),
+                Font      = new Font("Segoe UI", 8.5f),
+                Text      = "📐 No document open",
+                AutoEllipsis = true
+            };
+            contextPanel.Controls.Add(_contextLabel);
+
+            // ── Chat display ──────────────────────────────────────────────────
+            _chatBox = new RichTextBox
+            {
+                Dock        = DockStyle.Fill,
+                BackColor   = BgBase,
+                ForeColor   = TextMain,
+                Font        = new Font("Segoe UI", 9.5f),
+                ReadOnly    = true,
+                BorderStyle = BorderStyle.None,
+                ScrollBars  = RichTextBoxScrollBars.Vertical,
+                WordWrap    = true,
+                Padding     = new Padding(8)
+            };
+
+            // ── Dock order (bottom-to-top): strip → toolbar → input → context → fill ──
+            statusStrip.Dock  = DockStyle.Bottom;
+            toolbar.Dock      = DockStyle.Bottom;
+            inputPanel.Dock   = DockStyle.Bottom;
+            contextPanel.Dock = DockStyle.Top;
+            _chatBox.Dock     = DockStyle.Fill;
+
+            Controls.Add(_chatBox);
+            Controls.Add(contextPanel);
+            Controls.Add(inputPanel);
+            Controls.Add(toolbar);
+            Controls.Add(statusStrip);
+
+            AppendSystem("Claude Opus 4.8 connected.\n" +
+                         "Ask anything about your Inventor design. " +
+                         "I can generate iLogic rules, explain features, audit parameters, and more.\n" +
+                         "Press Enter to send · Shift+Enter for a newline.");
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Public
+        // ─────────────────────────────────────────────────────────────────────
+
+        public void RefreshContext()
+        {
+            _documentContext   = InventorContextBuilder.Build(StandardAddInServer.InventorApp);
+            _contextLabel.Text = "📐 " + InventorContextBuilder.SummaryLine(StandardAddInServer.InventorApp);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Messaging
+        // ─────────────────────────────────────────────────────────────────────
+
+        private void OnInputKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter && !e.Shift)
+            {
+                e.SuppressKeyPress = true;
+                SendMessage();
+            }
+        }
+
+        private async void SendMessage()
+        {
+            var text = _inputBox.Text.Trim();
+            if (string.IsNullOrEmpty(text)) return;
+
+            _inputBox.Clear();
+            AppendUser(text);
+            SetBusy(true);
+
+            try
+            {
+                RefreshContext();
+                var reply = await _api.SendAsync(text, _history, _documentContext);
+
+                _history.Add(new ChatMessage("user",      text));
+                _history.Add(new ChatMessage("assistant", reply));
+
+                AppendAssistant(reply);
+                TryExtractCode(reply);
+            }
+            catch (Exception ex)
+            {
+                AppendSystem($"⚠ Error: {ex.Message}");
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+        }
+
+        private void ClearChat()
+        {
+            _history.Clear();
+            _chatBox.Clear();
+            _lastCode            = null;
+            _lastCodeLanguage    = "Code";
+            _copyCodeBtn.Enabled = false;
+            _copyCodeBtn.Text    = "Copy Code";
+            _copyCodeBtn.BackColor = Color.FromArgb(55, 55, 55);
+            AppendSystem("Chat cleared — new conversation started.");
+        }
+
+        private void OnCopyCode(object sender, EventArgs e)
+        {
+            if (!string.IsNullOrEmpty(_lastCode))
+            {
+                Clipboard.SetText(_lastCode);
+                _copyCodeBtn.Text = "✓ Copied!";
+                var t = new Timer { Interval = 1800 };
+                t.Tick += (_, __) => { _copyCodeBtn.Text = $"Copy {_lastCodeLanguage}"; t.Stop(); t.Dispose(); };
+                t.Start();
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Rendering
+        // ─────────────────────────────────────────────────────────────────────
+
+        private void AppendUser(string text)
+        {
+            AppendRun("\nYou\n", UserBlue, new Font("Segoe UI", 9f, FontStyle.Bold));
+            AppendRun(text + "\n", TextMain, new Font("Segoe UI", 9.5f));
+            ScrollToEnd();
+        }
+
+        private void AppendAssistant(string response)
+        {
+            AppendRun("\nClaude\n", Coral, new Font("Segoe UI", 9f, FontStyle.Bold));
+
+            // Render text and code blocks with different styles
+            foreach (var (segment, isCode) in ParseBlocks(response))
+            {
+                if (isCode)
+                {
+                    AppendRun(segment, CodeGreen, new Font("Consolas", 9f));
+                }
+                else
+                {
+                    AppendRun(segment, TextMain, new Font("Segoe UI", 9.5f));
+                }
+            }
+
+            AppendRun("\n", TextMain, new Font("Segoe UI", 9.5f));
+            ScrollToEnd();
+        }
+
+        private void AppendSystem(string text)
+        {
+            AppendRun(text + "\n", TextDim, new Font("Segoe UI", 8.5f, FontStyle.Italic));
+            ScrollToEnd();
+        }
+
+        private void AppendRun(string text, Color color, Font font)
+        {
+            _chatBox.SelectionStart = _chatBox.TextLength;
+            _chatBox.SelectionFont  = font;
+            _chatBox.SelectionColor = color;
+            _chatBox.AppendText(text);
+        }
+
+        private void ScrollToEnd()
+        {
+            _chatBox.SelectionStart = _chatBox.TextLength;
+            _chatBox.ScrollToCaret();
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Code block parsing
+        // ─────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Splits the response into (text, isCode) segments on ``` fences.
+        /// The language tag after the opening fence is stripped.
+        /// </summary>
+        private static List<(string segment, bool isCode)> ParseBlocks(string input)
+        {
+            var result = new List<(string, bool)>();
+            int pos    = 0;
+
+            while (pos < input.Length)
+            {
+                int fenceOpen = input.IndexOf("```", pos, StringComparison.Ordinal);
+                if (fenceOpen < 0)
+                {
+                    result.Add((input.Substring(pos), false));
+                    break;
+                }
+
+                if (fenceOpen > pos)
+                    result.Add((input.Substring(pos, fenceOpen - pos), false));
+
+                // Skip ``` + optional language tag + newline
+                int tagEnd   = input.IndexOf('\n', fenceOpen + 3);
+                int codeStart = tagEnd >= 0 ? tagEnd + 1 : fenceOpen + 3;
+
+                int fenceClose = input.IndexOf("```", codeStart, StringComparison.Ordinal);
+                if (fenceClose < 0)
+                {
+                    // Unclosed block — treat remainder as code
+                    result.Add((input.Substring(codeStart), true));
+                    pos = input.Length;
+                }
+                else
+                {
+                    result.Add((input.Substring(codeStart, fenceClose - codeStart), true));
+                    pos = fenceClose + 3;
+                    if (pos < input.Length && input[pos] == '\n') pos++;
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Extracts the first code block and its language tag for the copy button.
+        /// </summary>
+        private void TryExtractCode(string response)
+        {
+            int fence = response.IndexOf("```", StringComparison.Ordinal);
+            if (fence < 0) return;
+
+            // Language tag is text between ``` and first newline
+            int tagEnd  = response.IndexOf('\n', fence + 3);
+            var langTag = tagEnd >= 0
+                ? response.Substring(fence + 3, tagEnd - fence - 3).Trim().ToLowerInvariant()
+                : string.Empty;
+
+            int codeStart = tagEnd >= 0 ? tagEnd + 1 : fence + 3;
+            int codeEnd   = response.IndexOf("```", codeStart, StringComparison.Ordinal);
+            if (codeEnd < 0) return;
+
+            _lastCode = response.Substring(codeStart, codeEnd - codeStart).TrimEnd();
+
+            _lastCodeLanguage = langTag switch
+            {
+                "ilogic"      => "iLogic",
+                "vb" or "vbnet" or "visualbasic" => "VB",
+                "csharp" or "cs" => "C#",
+                ""            => "Code",
+                _             => langTag.Length > 8 ? "Code" : langTag.ToUpperInvariant()
+            };
+
+            _copyCodeBtn.Enabled   = true;
+            _copyCodeBtn.Text      = $"Copy {_lastCodeLanguage}";
+            _copyCodeBtn.BackColor = Color.FromArgb(45, 100, 55);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Helpers
+        // ─────────────────────────────────────────────────────────────────────
+
+        private void SetBusy(bool busy)
+        {
+            _sendBtn.Enabled  = !busy;
+            _inputBox.Enabled = !busy;
+            _statusLabel.Text = busy ? "Claude is thinking…" : "Ready";
+            Cursor            = busy ? Cursors.WaitCursor : Cursors.Default;
+        }
+
+        private Button MakeToolBtn(string text, int left)
+        {
+            var btn = new Button
+            {
+                Text      = text,
+                Left      = left, Top = 3, Width = 80, Height = 28,
+                BackColor = Color.FromArgb(50, 50, 50),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font      = new Font("Segoe UI", 8f),
+                Cursor    = Cursors.Hand
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(70, 70, 70);
+            return btn;
+        }
+    }
+}
