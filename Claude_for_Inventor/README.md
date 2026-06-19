@@ -41,11 +41,11 @@ Open a chat panel from **Tools → Claude AI** in any Part, Assembly, or Drawing
    The post-build step runs `regasm.exe` automatically to register the COM class.
    If it fails (needs elevation), run manually:
 
-   ```cmd
-   :: Run as Administrator
-   "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\regasm.exe" ^
-       "bin\Release\net48\ClaudeForInventor.dll" /codebase /nologo
-   ```
+      ```powershell
+      # Run as Administrator
+      & "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\regasm.exe" `
+         "bin\Release\net48\ClaudeForInventor.dll" /codebase /nologo
+      ```
 
 ---
 
