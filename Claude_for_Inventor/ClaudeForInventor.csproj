@@ -37,6 +37,12 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="ClaudeForInventor.addin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <!--
     POST-BUILD: Registers the DLL for COM interop.
     Run once as Administrator, or use the manual regasm command in README.

@@ -10,3 +10,4 @@ C:\Users\Thoma\OneDrive\Documents\GitHub\Autodesk-Inventor\Claude_for_Inventor\b
 C:\Users\Thoma\OneDrive\Documents\GitHub\Autodesk-Inventor\Claude_for_Inventor\obj\Release\net48\ClaudeFo.E36FBE23.Up2Date
 C:\Users\Thoma\OneDrive\Documents\GitHub\Autodesk-Inventor\Claude_for_Inventor\obj\Release\net48\ClaudeForInventor.dll
 C:\Users\Thoma\OneDrive\Documents\GitHub\Autodesk-Inventor\Claude_for_Inventor\obj\Release\net48\ClaudeForInventor.pdb
+C:\Users\Thoma\OneDrive\Documents\GitHub\Autodesk-Inventor\Claude_for_Inventor\bin\Release\net48\ClaudeForInventor.addin

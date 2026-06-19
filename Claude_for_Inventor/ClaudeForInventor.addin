@@ -10,7 +10,7 @@
   OR the Assembly path below must be absolute.
   
   Supported version numbers:
-    Inventor 2023 = 27   2024 = 28   2025 = 29   2026 = 30
+    Inventor 2023 = 27   2024 = 28   2025 = 29   2026 = 30   2027 = 31
   Adjust SupportedSoftwareVersionGreaterThan to your oldest supported version.
 -->
 <Addin Type="Standard">
