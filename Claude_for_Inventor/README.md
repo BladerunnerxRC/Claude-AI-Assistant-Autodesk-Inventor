@@ -142,12 +142,6 @@ Claude sees your user parameters by name:
 ## Suggested Improvements
 
 
-- **Selection context** — detect `InventorApp.ActiveDocument.SelectSet` and append selected entity info
-- **iLogic runner** — execute the generated VB rule directly via `iLogicVb.RunRule`
-- **Conversation export** — save the chat as `.md` or `.txt`
-- **Dockable panel** — replace floating `Form` with a docked `DockableWindow` via Inventor's UI API
-- **Parameter write-back** — parse Claude's parameter suggestions and apply them via the Parameters API
-
 
 ---
 

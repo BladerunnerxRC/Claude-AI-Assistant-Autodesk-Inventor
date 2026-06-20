@@ -15,6 +15,7 @@ namespace ClaudeForInventor
         private string  _documentContext = string.Empty;
         private string? _lastCode;
         private string  _lastCodeLanguage = "Code";
+        private List<(string Name, string Expression)>? _lastParams;
 
         // ── Controls ──────────────────────────────────────────────────────────
         private readonly RichTextBox           _chatBox;
@@ -25,6 +26,7 @@ namespace ClaudeForInventor
         private readonly Button                _settingsBtn;
         private readonly Button                _runILogicBtn;
         private readonly Button                _exportBtn;
+        private readonly Button                _applyParamsBtn;
         private readonly Label                 _contextLabel;
         private readonly ToolStripStatusLabel  _statusLabel;
         private readonly ToolStripStatusLabel  _modelLabel;
@@ -85,17 +87,21 @@ namespace ClaudeForInventor
             _settingsBtn  = MakeToolBtn("⚙ Settings", 168);
             _runILogicBtn = MakeToolBtn("▶ Run iLogic", 256);
             _runILogicBtn.Width = 90;
-            _exportBtn    = MakeToolBtn("Export", 350);
+            _exportBtn      = MakeToolBtn("Export",       350);
             _exportBtn.Width = 72;
-            _copyCodeBtn .Enabled = false;
-            _runILogicBtn.Enabled = false;
-            _exportBtn   .Enabled = false;
-            _newChatBtn  .Click += (_, __) => ClearChat();
-            _copyCodeBtn .Click += OnCopyCode;
-            _settingsBtn .Click += (_, __) => { using var d = new SettingsDialog(); d.ShowDialog(this); };
-            _runILogicBtn.Click += (_, __) => RunILogicRule();
-            _exportBtn   .Click += (_, __) => ExportChat();
-            toolbar.Controls.AddRange(new Control[] { _newChatBtn, _copyCodeBtn, _settingsBtn, _runILogicBtn, _exportBtn });
+            _applyParamsBtn = MakeToolBtn("Apply Params", 426);
+            _applyParamsBtn.Width = 92;
+            _copyCodeBtn   .Enabled = false;
+            _runILogicBtn  .Enabled = false;
+            _exportBtn     .Enabled = false;
+            _applyParamsBtn.Enabled = false;
+            _newChatBtn    .Click += (_, __) => ClearChat();
+            _copyCodeBtn   .Click += OnCopyCode;
+            _settingsBtn   .Click += (_, __) => { using var d = new SettingsDialog(); d.ShowDialog(this); };
+            _runILogicBtn  .Click += (_, __) => RunILogicRule();
+            _exportBtn     .Click += (_, __) => ExportChat();
+            _applyParamsBtn.Click += (_, __) => ApplyParameters();
+            toolbar.Controls.AddRange(new Control[] { _newChatBtn, _copyCodeBtn, _settingsBtn, _runILogicBtn, _exportBtn, _applyParamsBtn });
 
             // ── Input panel ───────────────────────────────────────────────────
             var inputPanel = new Panel { Height = 90, BackColor = BgPanel, Padding = new Padding(8) };
@@ -245,6 +251,7 @@ namespace ClaudeForInventor
                 ScrollToEnd();
 
                 TryExtractCode(reply);
+                TryExtractParams(reply);
             }
             catch (Exception ex)
             {
@@ -267,7 +274,10 @@ namespace ClaudeForInventor
             _copyCodeBtn .BackColor = Color.FromArgb(55, 55, 55);
             _runILogicBtn.Enabled   = false;
             _runILogicBtn.BackColor = Color.FromArgb(55, 55, 55);
-            _exportBtn   .Enabled   = false;
+            _exportBtn     .Enabled   = false;
+            _applyParamsBtn.Enabled   = false;
+            _applyParamsBtn.BackColor = Color.FromArgb(55, 55, 55);
+            _lastParams               = null;
             AppendSystem("Chat cleared — new conversation started.");
         }
 
@@ -396,6 +406,131 @@ namespace ClaudeForInventor
             {
                 AppendSystem($"⚠ Export failed: {ex.Message}");
             }
+        }
+
+        private void TryExtractParams(string response)
+        {
+            _lastParams             = null;
+            _applyParamsBtn.Enabled = false;
+            _applyParamsBtn.BackColor = Color.FromArgb(55, 55, 55);
+
+            foreach (var fence in new[] { "```params", "```parameters" })
+            {
+                int fencePos = response.IndexOf(fence, StringComparison.OrdinalIgnoreCase);
+                if (fencePos < 0) continue;
+
+                int lineEnd = response.IndexOf('\n', fencePos);
+                if (lineEnd < 0) continue;
+
+                int blockEnd = response.IndexOf("```", lineEnd + 1, StringComparison.Ordinal);
+                if (blockEnd < 0) continue;
+
+                var block  = response.Substring(lineEnd + 1, blockEnd - lineEnd - 1);
+                var parsed = ParseParamBlock(block);
+                if (parsed.Count == 0) continue;
+
+                _lastParams             = parsed;
+                _applyParamsBtn.Enabled = true;
+                _applyParamsBtn.BackColor = Color.FromArgb(70, 50, 110);
+                break;
+            }
+        }
+
+        private static List<(string Name, string Expression)> ParseParamBlock(string block)
+        {
+            var result = new List<(string, string)>();
+            foreach (var rawLine in block.Split('\n'))
+            {
+                var line = rawLine.Trim('\r', ' ', '\t');
+                if (string.IsNullOrEmpty(line) || line.StartsWith("//") || line.StartsWith("#"))
+                    continue;
+
+                int eq = line.IndexOf('=');
+                if (eq <= 0) continue;
+
+                var name = line.Substring(0, eq).Trim();
+                var expr = line.Substring(eq + 1).Trim();
+                if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(expr))
+                    result.Add((name, expr));
+            }
+            return result;
+        }
+
+        private void ApplyParameters()
+        {
+            if (_lastParams == null || _lastParams.Count == 0) return;
+
+            var app = StandardAddInServer.InventorApp;
+            if (app?.ActiveDocument == null)
+            {
+                AppendSystem("⚠ No document open — cannot apply parameters.");
+                return;
+            }
+
+            var doc = app.ActiveDocument;
+            Inventor.Parameters? parameters = null;
+            try
+            {
+                parameters = doc.DocumentType switch
+                {
+                    Inventor.DocumentTypeEnum.kPartDocumentObject     => ((Inventor.PartDocument)doc)    .ComponentDefinition.Parameters,
+                    Inventor.DocumentTypeEnum.kAssemblyDocumentObject => ((Inventor.AssemblyDocument)doc).ComponentDefinition.Parameters,
+                    _ => null
+                };
+            }
+            catch (Exception ex)
+            {
+                AppendSystem($"⚠ Cannot access parameters: {ex.Message}");
+                return;
+            }
+
+            if (parameters == null)
+            {
+                AppendSystem("⚠ Parameter write-back is only supported for Part and Assembly documents.");
+                return;
+            }
+
+            int ok = 0, fail = 0;
+            var sb = new StringBuilder();
+            foreach (var (name, expr) in _lastParams)
+            {
+                try
+                {
+                    bool found = false;
+
+                    // User parameters first — safest to modify
+                    foreach (Inventor.UserParameter up in parameters.UserParameters)
+                    {
+                        if (!string.Equals(up.Name, name, StringComparison.OrdinalIgnoreCase)) continue;
+                        up.Expression = expr;
+                        found = true;
+                        break;
+                    }
+
+                    // Fallback: any parameter (model params, reference params, etc.)
+                    if (!found)
+                    {
+                        foreach (Inventor.Parameter p in parameters)
+                        {
+                            if (!string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)) continue;
+                            p.Expression = expr;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found) throw new KeyNotFoundException($"Parameter \"{name}\" not found.");
+                    sb.AppendLine($"  ✓  {name} = {expr}");
+                    ok++;
+                }
+                catch (Exception ex)
+                {
+                    sb.AppendLine($"  ✗  {name}: {ex.Message}");
+                    fail++;
+                }
+            }
+
+            AppendSystem($"Applied {ok} of {ok + fail} parameter(s):\n{sb.ToString().TrimEnd()}");
         }
 
         // ─────────────────────────────────────────────────────────────────────
