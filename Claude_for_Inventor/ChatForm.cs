@@ -64,11 +64,8 @@ namespace ClaudeForInventor
         {
             Text            = "Claude AI — Inventor Assistant";
             Size            = new Size(540, 720);
-            MinimumSize     = new Size(400, 500);
-            StartPosition   = FormStartPosition.Manual;
-            Location        = new System.Drawing.Point(
-                Screen.PrimaryScreen.WorkingArea.Right - 560,
-                Screen.PrimaryScreen.WorkingArea.Top   + 40);
+            MinimumSize     = new Size(300, 400);
+            FormBorderStyle = FormBorderStyle.None;   // DockableWindow provides the frame
             BackColor       = BgBase;
             ForeColor       = TextMain;
             Font            = new Font("Segoe UI", 9f);

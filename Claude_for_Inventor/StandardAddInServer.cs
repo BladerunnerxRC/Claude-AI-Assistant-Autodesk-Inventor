@@ -15,8 +15,13 @@ namespace ClaudeForInventor
         // Shared so ChatForm can call Inventor API
         internal static Inventor.Application? InventorApp { get; private set; }
 
-        private ButtonDefinition? _chatButton;
-        private ChatForm? _chatForm;
+        private ButtonDefinition?  _chatButton;
+        private ChatForm?          _chatForm;
+        private DockableWindow?    _dockWin;
+        private DockWinNativeHook? _dockWinHook;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
 
         // ──────────────────────────────────────────────────────────────────────
         // Lifecycle
@@ -26,12 +31,18 @@ namespace ClaudeForInventor
         {
             InventorApp = addInSite.Application;
             CreateButton();
+            CreateDockableWindow();
             if (firstTime) AddToRibbons();
         }
 
         public void Deactivate()
         {
             _chatForm?.Close();
+
+            _dockWinHook?.ReleaseHandle();
+            _dockWinHook = null;
+            if (_dockWin != null) { Marshal.ReleaseComObject(_dockWin); _dockWin = null; }
+
             if (_chatButton != null) _chatButton.OnExecute -= OnOpenChat;
 
             if (InventorApp != null)
@@ -93,11 +104,56 @@ namespace ClaudeForInventor
         private void OnOpenChat(NameValueMap context)
         {
             if (_chatForm == null || _chatForm.IsDisposed)
+            {
                 _chatForm = new ChatForm();
 
-            _chatForm.Show();
-            _chatForm.BringToFront();
+                var dockHwnd = _dockWin != null ? (IntPtr)_dockWin.HWND : IntPtr.Zero;
+                if (dockHwnd != IntPtr.Zero)
+                {
+                    _chatForm.TopLevel = false;          // must be set before handle is created
+                    SetParent(_chatForm.Handle, dockHwnd);
+                    _chatForm.SetBounds(0, 0, _dockWin!.Width, _dockWin.Height);
+
+                    _dockWinHook?.ReleaseHandle();
+                    _dockWinHook = new DockWinNativeHook(dockHwnd, _chatForm);
+                }
+
+                _chatForm.Show();
+            }
+
+            if (_dockWin != null)
+                _dockWin.Visible = true;
+            else
+                _chatForm.BringToFront();   // fallback: float if DW unavailable
+
             _chatForm.RefreshContext();
+        }
+
+        private void CreateDockableWindow()
+        {
+            try
+            {
+                _dockWin = InventorApp!.UserInterfaceManager.DockableWindows.Add(
+                    "{7B3F9A21-C4E8-4D12-B5A6-F0E2D8C3A9B7}",
+                    "ClaudeAI_Panel",
+                    "Claude AI");
+            }
+            catch
+            {
+                // DockableWindow persists across re-activations in the same session;
+                // find the existing instance by InternalName.
+                foreach (DockableWindow dw in InventorApp!.UserInterfaceManager.DockableWindows)
+                {
+                    if (dw.InternalName == "ClaudeAI_Panel") { _dockWin = dw; break; }
+                }
+                if (_dockWin == null) return;
+            }
+
+            _dockWin.ShowTitleBar          = true;
+            _dockWin.ShowVisibilityCheckBox = false;
+            _dockWin.DisableCloseButton    = false;
+            _dockWin.DockingState          = DockingStateEnum.kDockRight;
+            _dockWin.Width                 = 540;
         }
 
         // ──────────────────────────────────────────────────────────────────────
@@ -117,6 +173,32 @@ namespace ClaudeForInventor
                     new PointF(9f, 7f));
             }
             return AxHostConverter.GetIPictureDisp(bmp);
+        }
+
+        // Subclasses the DockableWindow's Win32 HWND to intercept WM_SIZE so the
+        // embedded ChatForm can be kept flush with the panel's client area.
+        private sealed class DockWinNativeHook : NativeWindow
+        {
+            private const int WM_SIZE = 0x0005;
+            private readonly ChatForm _form;
+
+            public DockWinNativeHook(IntPtr hwnd, ChatForm form)
+            {
+                _form = form;
+                AssignHandle(hwnd);
+            }
+
+            protected override void WndProc(ref Message m)
+            {
+                base.WndProc(ref m);    // let Inventor process first
+                if (m.Msg == WM_SIZE && !_form.IsDisposed)
+                {
+                    int w = (int)(long)m.LParam        & 0xFFFF;
+                    int h = ((int)(long)m.LParam >> 16) & 0xFFFF;
+                    if (w > 0 && h > 0)
+                        _form.SetBounds(0, 0, w, h);
+                }
+            }
         }
 
         // Private AxHost subclass – the only legal way to call
