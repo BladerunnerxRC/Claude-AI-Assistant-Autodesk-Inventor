@@ -8,7 +8,7 @@ namespace ClaudeForInventor
         public AboutDialog()
         {
             Text            = "About Claude for Inventor";
-            Size            = new Size(430, 260);
+            Size            = new Size(430, 285);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition   = FormStartPosition.CenterParent;
             MaximizeBox     = false;
@@ -40,7 +40,7 @@ namespace ClaudeForInventor
 
             var version = new Label
             {
-                Text      = $"Model: {ClaudeApiClient.Model}  ·  Inventor 2027",
+                Text      = $"v{ClaudeApiClient.Version}  ·  Model: {ClaudeApiClient.Model}  ·  Inventor 2027",
                 Font      = new Font("Segoe UI", 8.5f),
                 ForeColor = Color.FromArgb(110, 110, 110),
                 AutoSize  = true,
@@ -73,7 +73,16 @@ namespace ClaudeForInventor
                 Font      = new Font("Segoe UI", 8.5f),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 AutoSize  = true,
-                Left      = 20, Top = 185
+                Left      = 20, Top = 175
+            };
+
+            var openSource = new Label
+            {
+                Text      = "Open source code created by T.A.Smith2 (2026) and Claude Code.",
+                Font      = new Font("Segoe UI", 8f, FontStyle.Italic),
+                ForeColor = Color.FromArgb(85, 85, 85),
+                AutoSize  = true,
+                Left      = 20, Top = 195
             };
 
             var closeBtn = new Button
@@ -90,7 +99,7 @@ namespace ClaudeForInventor
             closeBtn.FlatAppearance.BorderSize = 0;
 
             Controls.AddRange(new System.Windows.Forms.Control[]
-                { logo, title, version, sep, desc, credit, closeBtn });
+                { logo, title, version, sep, desc, credit, openSource, closeBtn });
 
             AcceptButton = closeBtn;
         }
