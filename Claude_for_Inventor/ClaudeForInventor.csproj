@@ -31,6 +31,8 @@
     </Reference>
     <!-- System.Net.Http must be referenced explicitly in net48 SDK-style projects -->
     <Reference Include="System.Net.Http" />
+    <!-- Microsoft.CSharp required for `dynamic` dispatch (iLogic automation object) -->
+    <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
 
   <ItemGroup>

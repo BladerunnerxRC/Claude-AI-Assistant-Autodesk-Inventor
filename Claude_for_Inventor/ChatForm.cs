@@ -23,6 +23,7 @@ namespace ClaudeForInventor
         private readonly Button                _newChatBtn;
         private readonly Button                _copyCodeBtn;
         private readonly Button                _settingsBtn;
+        private readonly Button                _runILogicBtn;
         private readonly Label                 _contextLabel;
         private readonly ToolStripStatusLabel  _statusLabel;
         private readonly ToolStripStatusLabel  _modelLabel;
@@ -81,14 +82,18 @@ namespace ClaudeForInventor
 
             // ── Toolbar ──────────────────────────────────────────────────────
             var toolbar = new Panel { Height = 36, BackColor = BgToolbar, Padding = new Padding(6, 4, 6, 0) };
-            _newChatBtn  = MakeToolBtn("New Chat",  0);
-            _copyCodeBtn = MakeToolBtn("Copy Code", 84);
-            _settingsBtn = MakeToolBtn("⚙ Settings", 168);
-            _copyCodeBtn.Enabled = false;
-            _newChatBtn .Click += (_, __) => ClearChat();
-            _copyCodeBtn.Click += OnCopyCode;
-            _settingsBtn.Click += (_, __) => { using var d = new SettingsDialog(); d.ShowDialog(this); };
-            toolbar.Controls.AddRange(new Control[] { _newChatBtn, _copyCodeBtn, _settingsBtn });
+            _newChatBtn   = MakeToolBtn("New Chat",    0);
+            _copyCodeBtn  = MakeToolBtn("Copy Code",  84);
+            _settingsBtn  = MakeToolBtn("⚙ Settings", 168);
+            _runILogicBtn = MakeToolBtn("▶ Run iLogic", 256);
+            _runILogicBtn.Width = 90;
+            _copyCodeBtn .Enabled = false;
+            _runILogicBtn.Enabled = false;
+            _newChatBtn  .Click += (_, __) => ClearChat();
+            _copyCodeBtn .Click += OnCopyCode;
+            _settingsBtn .Click += (_, __) => { using var d = new SettingsDialog(); d.ShowDialog(this); };
+            _runILogicBtn.Click += (_, __) => RunILogicRule();
+            toolbar.Controls.AddRange(new Control[] { _newChatBtn, _copyCodeBtn, _settingsBtn, _runILogicBtn });
 
             // ── Input panel ───────────────────────────────────────────────────
             var inputPanel = new Panel { Height = 90, BackColor = BgPanel, Padding = new Padding(8) };
@@ -254,9 +259,11 @@ namespace ClaudeForInventor
             _chatBox.Clear();
             _lastCode            = null;
             _lastCodeLanguage    = "Code";
-            _copyCodeBtn.Enabled = false;
-            _copyCodeBtn.Text    = "Copy Code";
-            _copyCodeBtn.BackColor = Color.FromArgb(55, 55, 55);
+            _copyCodeBtn .Enabled   = false;
+            _copyCodeBtn .Text      = "Copy Code";
+            _copyCodeBtn .BackColor = Color.FromArgb(55, 55, 55);
+            _runILogicBtn.Enabled   = false;
+            _runILogicBtn.BackColor = Color.FromArgb(55, 55, 55);
             AppendSystem("Chat cleared — new conversation started.");
         }
 
@@ -269,6 +276,55 @@ namespace ClaudeForInventor
                 var t = new Timer { Interval = 1800 };
                 t.Tick += (_, __) => { _copyCodeBtn.Text = $"Copy {_lastCodeLanguage}"; t.Stop(); t.Dispose(); };
                 t.Start();
+            }
+        }
+
+        private void RunILogicRule()
+        {
+            if (string.IsNullOrEmpty(_lastCode)) return;
+
+            var app = StandardAddInServer.InventorApp;
+            if (app?.ActiveDocument == null)
+            {
+                AppendSystem("⚠ No document open — cannot run iLogic rule.");
+                return;
+            }
+
+            const string ILogicAddinGuid = "{3BDD8D79-2179-4B11-8A5A-257B1C0263AC}";
+            const string RuleName        = "Claude_Generated";
+
+            _runILogicBtn.Enabled = false;
+            try
+            {
+                var addin = app.ApplicationAddIns.ItemById[ILogicAddinGuid];
+                if (addin == null)
+                {
+                    AppendSystem("⚠ iLogic add-in not found. Ensure iLogic is installed.");
+                    return;
+                }
+
+                dynamic iLogic = addin.Automation;
+                var doc = app.ActiveDocument;
+
+                // Create or update the rule
+                string? existing = null;
+                try { existing = iLogic.GetRuleText(doc, RuleName); } catch { }
+
+                if (string.IsNullOrEmpty(existing))
+                    iLogic.AddRule(doc, RuleName, _lastCode);
+                else
+                    iLogic.SetRuleText(doc, RuleName, _lastCode);
+
+                iLogic.RunRule(doc, RuleName);
+                AppendSystem($"✓ iLogic rule \"{RuleName}\" ran successfully.");
+            }
+            catch (Exception ex)
+            {
+                AppendSystem($"⚠ iLogic run failed: {ex.Message}");
+            }
+            finally
+            {
+                _runILogicBtn.Enabled = true;
             }
         }
 
@@ -500,6 +556,10 @@ namespace ClaudeForInventor
             _copyCodeBtn.Enabled   = true;
             _copyCodeBtn.Text      = $"Copy {_lastCodeLanguage}";
             _copyCodeBtn.BackColor = Color.FromArgb(45, 100, 55);
+
+            bool isILogic = langTag is "ilogic" or "vb" or "vbnet" or "visualbasic";
+            _runILogicBtn.Enabled   = isILogic;
+            _runILogicBtn.BackColor = isILogic ? Color.FromArgb(40, 90, 35) : Color.FromArgb(55, 55, 55);
         }
 
         // ─────────────────────────────────────────────────────────────────────
