@@ -54,8 +54,8 @@ namespace ClaudeForInventor
             // ── Labels ────────────────────────────────────────────────────────
             Controls.Add(new Label
             {
-                Text     = "Cloudflare Worker Secret",
-                Left     = 14, Top = 14, Width = 220, Height = 18,
+                Text     = "Anthropic API Key",
+                Left     = 14, Top = 14, Width = 200, Height = 18,
                 ForeColor = Color.FromArgb(160, 180, 210)
             });
 
@@ -84,14 +84,14 @@ namespace ClaudeForInventor
             // ── Link ─────────────────────────────────────────────────────────
             var link = new LinkLabel
             {
-                Text       = "Set WORKER_SECRET in Cloudflare → Worker → Settings → Variables",
-                Left       = 14, Top = 68, Width = 410, Height = 18,
+                Text       = "Get a key at console.anthropic.com",
+                Left       = 14, Top = 68, Width = 300, Height = 18,
                 LinkColor  = Color.FromArgb(100, 160, 255),
                 ActiveLinkColor = Color.FromArgb(150, 200, 255),
                 ForeColor  = Color.FromArgb(100, 160, 255)
             };
             link.LinkClicked += (_, __) =>
-                System.Diagnostics.Process.Start("https://dash.cloudflare.com");
+                System.Diagnostics.Process.Start("https://console.anthropic.com/keys");
             Controls.Add(link);
 
             // ── Model info ────────────────────────────────────────────────────

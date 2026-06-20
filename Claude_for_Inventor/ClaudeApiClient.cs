@@ -51,7 +51,7 @@ LIVE INVENTOR CONTEXT
             var apiKey = SettingsManager.GetApiKey();
             if (string.IsNullOrWhiteSpace(apiKey))
                 throw new InvalidOperationException(
-                    "Worker secret not configured. Click ⚙ Settings and paste your Cloudflare Worker secret.");
+                    "API key not configured. Click ⚙ Settings and paste your Anthropic API key.");
 
             // Build messages list from history + new user turn
             var messages = new List<object>(history.Count + 1);
@@ -68,7 +68,7 @@ LIVE INVENTOR CONTEXT
             };
 
             using var req = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
-            req.Headers.Add("x-worker-secret", apiKey);
+            req.Headers.Add("x-api-key", apiKey);
             req.Headers.Add("anthropic-version", "2023-06-01");
             req.Content = new StringContent(
                 JsonConvert.SerializeObject(requestBody, Formatting.None),
