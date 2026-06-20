@@ -135,22 +135,19 @@ begin
   RegAsmPath := ExpandConstant('{win}\Microsoft.NET\Framework64\v4.0.30319\regasm.exe');
   if not FileExists(RegAsmPath) then
     MsgBox(
-      '.NET Framework 4.8 (64-bit) does not appear to be installed.'          + #13#10 +
-      'COM registration will fail without it.'                                + #13#10 +
-      #13#10 +
+      '.NET Framework 4.8 (64-bit) does not appear to be installed.' + #13#10 +
+      'COM registration will fail without it.' + #13#10 + #13#10 +
       'Download: https://dotnet.microsoft.com/download/dotnet-framework/net48',
       mbError, MB_OK);
 
   AddinsPath := ExpandConstant('{commonappdata}\Autodesk\Inventor 2027\Addins');
   if not DirExists(AddinsPath) then
     if MsgBox(
-      'The Autodesk Inventor 2027 Addins folder was not found:'  + #13#10 +
-      AddinsPath                                                  + #13#10 +
-      #13#10 +
-      'Inventor 2027 may not be installed on this machine. The'  + #13#10 +
-      'folder will be created, but the add-in will only load'    + #13#10 +
-      'once Inventor is installed.'                              + #13#10 +
-      #13#10 +
+      'The Autodesk Inventor 2027 Addins folder was not found:' + #13#10 +
+      AddinsPath + #13#10 + #13#10 +
+      'Inventor 2027 may not be installed on this machine. The' + #13#10 +
+      'folder will be created, but the add-in will only load'   + #13#10 +
+      'once Inventor is installed.' + #13#10 + #13#10 +
       'Continue anyway?',
       mbConfirmation, MB_YESNO) = IDNO then
         Result := False;
