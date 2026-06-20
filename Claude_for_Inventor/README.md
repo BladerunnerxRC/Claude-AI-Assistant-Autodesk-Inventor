@@ -13,6 +13,7 @@ Open a chat panel from **Tools → Claude AI** in any Part, Assembly, or Drawing
 - Conversation history maintained across turns in the same session
 - Active sketch detection — reports sketch name, line count, and circle count when a sketch is open for editing
 - Material reported for Part documents
+- **Selection context** — selected entities (faces, edges, features, occurrences, sketch geometry, work geometry, parameters) are appended to the context automatically
 
 ### Responses
 
@@ -22,10 +23,28 @@ Open a chat panel from **Tools → Claude AI** in any Part, Assembly, or Drawing
 
 ### UI
 
-- Dark-themed floating panel positioned to the right of Inventor's workspace
+- Docked panel integrated into Inventor's UI via `DockableWindow` — docks right by default, floatable and re-dockable like any native Inventor panel
 - Space and Delete keys work correctly inside the input box (Inventor keyboard interception bypassed via low-level hook)
-- New Chat, Copy Code, and Settings buttons in the toolbar
+- Toolbar buttons: **New Chat**, **Copy Code**, **⚙ Settings**, **▶ Run iLogic**, **Export**, **Apply Params**
 - Status bar shows model name and current state (Ready / Claude is thinking…)
+
+### iLogic Runner
+
+- **▶ Run iLogic** button activates when Claude responds with an `ilogic` or `vb` code block
+- Writes the code as a rule named `Claude_Generated` in the active document and executes it immediately via the iLogic automation API
+- The rule is preserved in the document so it can be inspected or edited in the iLogic editor
+
+### Conversation Export
+
+- **Export** button (enabled after the first reply) saves the full chat as `.md` or `.txt`
+- Markdown export uses `## You` / `## Claude` sections with `---` separators
+- Default filename: `Claude_Inventor_YYYYMMDD_HHMM`
+
+### Parameter Write-Back
+
+- When Claude suggests parameter changes, it outputs them in a ` ```params ` block
+- **Apply Params** button parses the block and writes each `Name = expression` value directly to the active document's `UserParameters` via the Inventor Parameters API
+- Per-parameter success/failure reported in the chat
 
 ### Security
 
@@ -121,12 +140,18 @@ Copy all three files from `bin\Release\net48\` to Inventor's add-ins folder:
 
 ## Usage Tips
 
-**iLogic generation**  
-Ask Claude to write an iLogic rule. When it responds with an `ilogic` fenced block, the **Copy iLogic** button activates. Click it, then paste directly into the iLogic editor.
+**iLogic generation and execution**  
+Ask Claude to write an iLogic rule. When it responds with an `ilogic` or `vb` fenced block, both **Copy iLogic** and **▶ Run iLogic** activate. Run iLogic executes the code immediately in the active document without opening the iLogic editor.
+
+**Parameter suggestions**  
+Ask Claude to recommend parameter changes. It will respond with a ` ```params ` block listing `Name = expression` pairs. Click **Apply Params** to write them directly to the model.
+
+**Context-aware selection**  
+Select a face, edge, feature, or component before sending your message. Claude will see the selected entity type in its context — useful for targeted questions like *"What's the best way to add a fillet to this edge?"*
 
 **Parameter-aware prompts**  
 Claude sees your user parameters by name:  
-*"Add a conditional to suppress the Fillet_R2 feature when Width < 50 mm."*
+*"Add a conditional to suppress Fillet_R2 when Width < 50 mm."*
 
 **Assembly analysis**  
 *"List all components that aren't grounded and have no assembly constraints."*
@@ -137,11 +162,8 @@ Claude sees your user parameters by name:
 **DFM review**  
 *"Are there any features in this part that might cause issues in sheet metal manufacturing?"*
 
----
-
-## Suggested Improvements
-
-
+**Exporting a session**  
+Click **Export** after any conversation to save it as `.md` (for notes/docs) or `.txt`.
 
 ---
 
