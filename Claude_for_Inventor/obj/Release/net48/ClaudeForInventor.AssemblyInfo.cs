@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ClaudeForInventor")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+35d4e7cdbc45ad4a462ade71f211d88040a4ef7a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0589e34c4213003e0f45782ea7e01757a76f8919")]
 [assembly: System.Reflection.AssemblyProductAttribute("ClaudeForInventor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ClaudeForInventor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

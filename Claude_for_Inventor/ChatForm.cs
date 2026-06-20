@@ -58,6 +58,7 @@ namespace ClaudeForInventor
         private static readonly Font FontH2       = new Font("Segoe UI", 11f,  FontStyle.Bold);
         private static readonly Font FontH3       = new Font("Segoe UI", 10f,  FontStyle.Bold);
         private static readonly Font FontCode     = new Font("Consolas", 9f);
+        private static readonly Font FontCodeBold = new Font("Consolas", 9f, FontStyle.Bold);
         private static readonly Font FontSystem   = new Font("Segoe UI", 8.5f, FontStyle.Italic);
 
         // ─────────────────────────────────────────────────────────────────────
@@ -97,7 +98,12 @@ namespace ClaudeForInventor
             _applyParamsBtn.Enabled = false;
             _newChatBtn    .Click += (_, __) => ClearChat();
             _copyCodeBtn   .Click += OnCopyCode;
-            _settingsBtn   .Click += (_, __) => { using var d = new SettingsDialog(); d.ShowDialog(this); };
+            var settingsMenu = new ContextMenuStrip { BackColor = Color.FromArgb(48, 48, 48), ForeColor = TextMain, ShowImageMargin = false };
+            settingsMenu.Items.Add("⚙  Settings…", null, (_, __) => { using var d = new SettingsDialog(); d.ShowDialog(this); });
+            settingsMenu.Items.Add(new ToolStripSeparator());
+            settingsMenu.Items.Add("ℹ  About",      null, (_, __) => { using var d = new AboutDialog();  d.ShowDialog(this); });
+            settingsMenu.Items.Add("?  Help",        null, (_, __) => { using var d = new HelpDialog();   d.ShowDialog(this); });
+            _settingsBtn.Click += (_, __) => settingsMenu.Show(_settingsBtn, new Point(0, _settingsBtn.Height));
             _runILogicBtn  .Click += (_, __) => RunILogicRule();
             _exportBtn     .Click += (_, __) => ExportChat();
             _applyParamsBtn.Click += (_, __) => ApplyParameters();
@@ -581,37 +587,43 @@ namespace ClaudeForInventor
         {
             var lines      = text.Split('\n');
             bool inFence   = false;
+            bool inTable   = false;
             var fenceLines = new List<string>();
+            var tableRows  = new List<string>();
 
             foreach (var rawLine in lines)
             {
                 var line = rawLine.TrimEnd('\r');
 
+                // ── Code fences ──────────────────────────────────────────────
                 if (!inFence && line.TrimStart().StartsWith("```"))
                 {
+                    if (inTable) { RenderTable(tableRows); tableRows.Clear(); inTable = false; }
                     inFence = true;
                     fenceLines.Clear();
                     continue;
                 }
                 if (inFence)
                 {
-                    if (line.TrimStart().StartsWith("```"))
-                    {
-                        RenderCodeBlock(fenceLines);
-                        inFence = false;
-                    }
-                    else
-                    {
-                        fenceLines.Add(line);
-                    }
+                    if (line.TrimStart().StartsWith("```")) { RenderCodeBlock(fenceLines); inFence = false; }
+                    else fenceLines.Add(line);
                     continue;
                 }
+
+                // ── Tables ───────────────────────────────────────────────────
+                if (line.TrimStart().StartsWith("|"))
+                {
+                    inTable = true;
+                    tableRows.Add(line);
+                    continue;
+                }
+                if (inTable) { RenderTable(tableRows); tableRows.Clear(); inTable = false; }
 
                 RenderTextLine(line);
             }
 
-            if (inFence && fenceLines.Count > 0)
-                RenderCodeBlock(fenceLines);
+            if (inFence && fenceLines.Count > 0) RenderCodeBlock(fenceLines);
+            if (inTable && tableRows .Count > 0) RenderTable(tableRows);
         }
 
         private void RenderTextLine(string line)
@@ -664,6 +676,81 @@ namespace ClaudeForInventor
             AppendRun(string.Join("\n", lines) + "\n", CodeGreen, FontCode, CodeBg);
             _chatBox.SelectionStart     = _chatBox.TextLength;
             _chatBox.SelectionBackColor = BgBase;
+        }
+
+        private void RenderTable(List<string> rows)
+        {
+            // Parse rows, skipping the separator line and detecting the header
+            var parsed     = new List<string[]>();
+            bool hasHeader = false;
+
+            foreach (var raw in rows)
+            {
+                var row = raw.Trim();
+                if (string.IsNullOrEmpty(row)) continue;
+
+                if (IsTableSeparator(row)) { hasHeader = parsed.Count > 0; continue; }
+
+                var parts = row.Split('|');
+                var cells = new List<string>();
+                for (int i = 0; i < parts.Length; i++)
+                {
+                    if (i == 0 && parts[i].Trim().Length == 0) continue;
+                    if (i == parts.Length - 1 && parts[i].Trim().Length == 0) continue;
+                    cells.Add(parts[i].Trim());
+                }
+                if (cells.Count > 0) parsed.Add(cells.ToArray());
+            }
+            if (parsed.Count == 0) return;
+
+            // Column count and minimum widths (content + 2 spaces padding)
+            int cols = 0;
+            foreach (var r in parsed) cols = Math.Max(cols, r.Length);
+            var widths = new int[cols];
+            foreach (var r in parsed)
+                for (int c = 0; c < r.Length; c++)
+                    widths[c] = Math.Max(widths[c], r[c].Length + 2);
+
+            // Border strings using box-drawing characters
+            var segs   = new string[cols];
+            for (int c = 0; c < cols; c++) segs[c] = new string('─', widths[c]);
+            string top    = "┌" + string.Join("┬", segs) + "┐";
+            string mid    = "├" + string.Join("┼", segs) + "┤";
+            string bottom = "└" + string.Join("┴", segs) + "┘";
+
+            var tableBg = Color.FromArgb(26, 28, 36);
+            AppendRun(top + "\n", TextDim, FontCode, tableBg);
+
+            for (int r = 0; r < parsed.Count; r++)
+            {
+                bool isHeader = hasHeader && r == 0;
+                var sb = new StringBuilder("│");
+                for (int c = 0; c < cols; c++)
+                {
+                    var cell = c < parsed[r].Length ? parsed[r][c] : "";
+                    sb.Append(' ').Append(cell.PadRight(widths[c] - 1)).Append('│');
+                }
+                var color = isHeader ? H2Color : TextMain;
+                var font  = isHeader ? FontCodeBold : FontCode;
+                AppendRun(sb.ToString() + "\n", color, font, tableBg);
+                if (isHeader) AppendRun(mid + "\n", TextDim, FontCode, tableBg);
+            }
+
+            AppendRun(bottom + "\n", TextDim, FontCode, tableBg);
+            _chatBox.SelectionStart     = _chatBox.TextLength;
+            _chatBox.SelectionBackColor = BgBase;
+        }
+
+        private static bool IsTableSeparator(string line)
+        {
+            bool hasDash = false;
+            foreach (char c in line)
+            {
+                if (c == '-') { hasDash = true; continue; }
+                if (c == '|' || c == ':' || c == ' ') continue;
+                return false;
+            }
+            return hasDash;
         }
 
         private void RenderInline(string text)
