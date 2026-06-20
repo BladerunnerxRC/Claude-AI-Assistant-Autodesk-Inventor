@@ -28,15 +28,33 @@ namespace ClaudeForInventor
         private readonly ToolStripStatusLabel  _modelLabel;
 
         // ── Colors ────────────────────────────────────────────────────────────
-        private static readonly Color BgBase    = Color.FromArgb(24, 24, 24);
-        private static readonly Color BgPanel   = Color.FromArgb(34, 34, 34);
-        private static readonly Color BgInput   = Color.FromArgb(42, 42, 42);
-        private static readonly Color BgToolbar = Color.FromArgb(28, 28, 28);
-        private static readonly Color Coral     = Color.FromArgb(204, 75, 55);
-        private static readonly Color UserBlue  = Color.FromArgb(130, 190, 255);
-        private static readonly Color TextMain  = Color.FromArgb(218, 218, 218);
-        private static readonly Color TextDim   = Color.FromArgb(110, 110, 110);
-        private static readonly Color CodeGreen = Color.FromArgb(180, 220, 170);
+        private static readonly Color BgBase      = Color.FromArgb(24, 24, 24);
+        private static readonly Color BgPanel     = Color.FromArgb(34, 34, 34);
+        private static readonly Color BgInput     = Color.FromArgb(42, 42, 42);
+        private static readonly Color BgToolbar   = Color.FromArgb(28, 28, 28);
+        private static readonly Color CodeBg      = Color.FromArgb(30, 32, 30);
+        private static readonly Color Coral       = Color.FromArgb(204, 75, 55);
+        private static readonly Color UserBlue    = Color.FromArgb(130, 190, 255);
+        private static readonly Color TextMain    = Color.FromArgb(218, 218, 218);
+        private static readonly Color TextDim     = Color.FromArgb(110, 110, 110);
+        private static readonly Color ItalicText  = Color.FromArgb(185, 185, 185);
+        private static readonly Color CodeGreen   = Color.FromArgb(180, 220, 170);
+        private static readonly Color H1Color     = Color.FromArgb(240, 190, 120);  // warm gold
+        private static readonly Color H2Color     = Color.FromArgb(160, 210, 160);  // soft green
+        private static readonly Color H3Color     = Color.FromArgb(140, 175, 215);  // soft blue
+        private static readonly Color BulletAccent= Color.FromArgb(130, 190, 255);
+        private static readonly Color HrColor     = Color.FromArgb(65, 65, 65);
+
+        // ── Fonts ─────────────────────────────────────────────────────────────
+        private static readonly Font FontBody     = new Font("Segoe UI", 9.5f);
+        private static readonly Font FontBodyBold = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+        private static readonly Font FontBodyItal = new Font("Segoe UI", 9.5f, FontStyle.Italic);
+        private static readonly Font FontLabel    = new Font("Segoe UI", 9f,   FontStyle.Bold);
+        private static readonly Font FontH1       = new Font("Segoe UI", 13f,  FontStyle.Bold);
+        private static readonly Font FontH2       = new Font("Segoe UI", 11f,  FontStyle.Bold);
+        private static readonly Font FontH3       = new Font("Segoe UI", 10f,  FontStyle.Bold);
+        private static readonly Font FontCode     = new Font("Consolas", 9f);
+        private static readonly Font FontSystem   = new Font("Segoe UI", 8.5f, FontStyle.Italic);
 
         // ─────────────────────────────────────────────────────────────────────
 
@@ -235,43 +253,31 @@ namespace ClaudeForInventor
 
         private void AppendUser(string text)
         {
-            AppendRun("\nYou\n", UserBlue, new Font("Segoe UI", 9f, FontStyle.Bold));
-            AppendRun(text + "\n", TextMain, new Font("Segoe UI", 9.5f));
+            AppendRun("\nYou\n", UserBlue, FontLabel);
+            AppendRun(text + "\n", TextMain, FontBody);
             ScrollToEnd();
         }
 
         private void AppendAssistant(string response)
         {
-            AppendRun("\nClaude\n", Coral, new Font("Segoe UI", 9f, FontStyle.Bold));
-
-            // Render text and code blocks with different styles
-            foreach (var (segment, isCode) in ParseBlocks(response))
-            {
-                if (isCode)
-                {
-                    AppendRun(segment, CodeGreen, new Font("Consolas", 9f));
-                }
-                else
-                {
-                    AppendRun(segment, TextMain, new Font("Segoe UI", 9.5f));
-                }
-            }
-
-            AppendRun("\n", TextMain, new Font("Segoe UI", 9.5f));
+            AppendRun("\nClaude\n", Coral, FontLabel);
+            RenderMarkdown(response);
+            AppendRun("\n", TextMain, FontBody);
             ScrollToEnd();
         }
 
         private void AppendSystem(string text)
         {
-            AppendRun(text + "\n", TextDim, new Font("Segoe UI", 8.5f, FontStyle.Italic));
+            AppendRun(text + "\n", TextDim, FontSystem);
             ScrollToEnd();
         }
 
-        private void AppendRun(string text, Color color, Font font)
+        private void AppendRun(string text, Color color, Font font, Color? bgColor = null)
         {
-            _chatBox.SelectionStart = _chatBox.TextLength;
-            _chatBox.SelectionFont  = font;
-            _chatBox.SelectionColor = color;
+            _chatBox.SelectionStart     = _chatBox.TextLength;
+            _chatBox.SelectionFont      = font;
+            _chatBox.SelectionColor     = color;
+            _chatBox.SelectionBackColor = bgColor ?? BgBase;
             _chatBox.AppendText(text);
         }
 
@@ -282,50 +288,159 @@ namespace ClaudeForInventor
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // Code block parsing
+        // Markdown rendering
         // ─────────────────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Splits the response into (text, isCode) segments on ``` fences.
-        /// The language tag after the opening fence is stripped.
-        /// </summary>
-        private static List<(string segment, bool isCode)> ParseBlocks(string input)
+        private void RenderMarkdown(string text)
         {
-            var result = new List<(string, bool)>();
-            int pos    = 0;
+            var lines      = text.Split('\n');
+            bool inFence   = false;
+            var fenceLines = new List<string>();
 
-            while (pos < input.Length)
+            foreach (var rawLine in lines)
             {
-                int fenceOpen = input.IndexOf("```", pos, StringComparison.Ordinal);
-                if (fenceOpen < 0)
+                var line = rawLine.TrimEnd('\r');
+
+                if (!inFence && line.TrimStart().StartsWith("```"))
                 {
-                    result.Add((input.Substring(pos), false));
-                    break;
+                    inFence = true;
+                    fenceLines.Clear();
+                    continue;
+                }
+                if (inFence)
+                {
+                    if (line.TrimStart().StartsWith("```"))
+                    {
+                        RenderCodeBlock(fenceLines);
+                        inFence = false;
+                    }
+                    else
+                    {
+                        fenceLines.Add(line);
+                    }
+                    continue;
                 }
 
-                if (fenceOpen > pos)
-                    result.Add((input.Substring(pos, fenceOpen - pos), false));
-
-                // Skip ``` + optional language tag + newline
-                int tagEnd   = input.IndexOf('\n', fenceOpen + 3);
-                int codeStart = tagEnd >= 0 ? tagEnd + 1 : fenceOpen + 3;
-
-                int fenceClose = input.IndexOf("```", codeStart, StringComparison.Ordinal);
-                if (fenceClose < 0)
-                {
-                    // Unclosed block — treat remainder as code
-                    result.Add((input.Substring(codeStart), true));
-                    pos = input.Length;
-                }
-                else
-                {
-                    result.Add((input.Substring(codeStart, fenceClose - codeStart), true));
-                    pos = fenceClose + 3;
-                    if (pos < input.Length && input[pos] == '\n') pos++;
-                }
+                RenderTextLine(line);
             }
 
-            return result;
+            if (inFence && fenceLines.Count > 0)
+                RenderCodeBlock(fenceLines);
+        }
+
+        private void RenderTextLine(string line)
+        {
+            if (line.StartsWith("# "))
+            {
+                AppendRun(line.Substring(2).Trim() + "\n", H1Color, FontH1);
+                return;
+            }
+            if (line.StartsWith("## "))
+            {
+                AppendRun(line.Substring(3).Trim() + "\n", H2Color, FontH2);
+                return;
+            }
+            if (line.StartsWith("### "))
+            {
+                AppendRun(line.Substring(4).Trim() + "\n", H3Color, FontH3);
+                return;
+            }
+            if (line == "---" || line == "___")
+            {
+                AppendRun("────────────────────────────────────\n", HrColor, FontBody);
+                return;
+            }
+            if (line.StartsWith("- ") || line.StartsWith("* "))
+            {
+                AppendRun("  • ", BulletAccent, FontBodyBold);
+                RenderInline(line.Substring(2));
+                AppendRun("\n", TextMain, FontBody);
+                return;
+            }
+            if (IsNumberedListItem(line, out var num, out var rest))
+            {
+                AppendRun($"  {num} ", BulletAccent, FontBodyBold);
+                RenderInline(rest);
+                AppendRun("\n", TextMain, FontBody);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                AppendRun("\n", TextMain, FontBody);
+                return;
+            }
+            RenderInline(line);
+            AppendRun("\n", TextMain, FontBody);
+        }
+
+        private void RenderCodeBlock(List<string> lines)
+        {
+            AppendRun(string.Join("\n", lines) + "\n", CodeGreen, FontCode, CodeBg);
+            _chatBox.SelectionStart     = _chatBox.TextLength;
+            _chatBox.SelectionBackColor = BgBase;
+        }
+
+        private void RenderInline(string text)
+        {
+            int pos = 0;
+            while (pos < text.Length)
+            {
+                // Bold: **...**
+                if (pos + 1 < text.Length && text[pos] == '*' && text[pos + 1] == '*')
+                {
+                    int end = text.IndexOf("**", pos + 2, StringComparison.Ordinal);
+                    if (end >= 0)
+                    {
+                        AppendRun(text.Substring(pos + 2, end - pos - 2), TextMain, FontBodyBold);
+                        pos = end + 2;
+                        continue;
+                    }
+                }
+                // Italic: *...*
+                if (text[pos] == '*')
+                {
+                    int end = text.IndexOf('*', pos + 1);
+                    if (end >= 0)
+                    {
+                        AppendRun(text.Substring(pos + 1, end - pos - 1), ItalicText, FontBodyItal);
+                        pos = end + 1;
+                        continue;
+                    }
+                }
+                // Inline code: `...`
+                if (text[pos] == '`')
+                {
+                    int end = text.IndexOf('`', pos + 1);
+                    if (end >= 0)
+                    {
+                        AppendRun(text.Substring(pos + 1, end - pos - 1), CodeGreen, FontCode);
+                        pos = end + 1;
+                        continue;
+                    }
+                }
+                // Plain text — run until next special char
+                int next = text.Length;
+                for (int i = pos + 1; i < text.Length; i++)
+                {
+                    if (text[i] == '*' || text[i] == '`') { next = i; break; }
+                }
+                AppendRun(text.Substring(pos, next - pos), TextMain, FontBody);
+                pos = next;
+            }
+        }
+
+        private static bool IsNumberedListItem(string line, out string number, out string content)
+        {
+            int i = 0;
+            while (i < line.Length && char.IsDigit(line[i])) i++;
+            if (i > 0 && i + 1 < line.Length && line[i] == '.' && line[i + 1] == ' ')
+            {
+                number  = line.Substring(0, i + 1);
+                content = line.Substring(i + 2);
+                return true;
+            }
+            number = content = string.Empty;
+            return false;
         }
 
         /// <summary>
