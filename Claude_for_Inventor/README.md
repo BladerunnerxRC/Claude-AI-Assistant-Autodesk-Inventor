@@ -141,13 +141,13 @@ Claude sees your user parameters by name:
 
 ## Suggested Improvements
 
-- **Streaming responses** — pipe SSE chunks to the RichTextBox for faster perceived response
+
 - **Selection context** — detect `InventorApp.ActiveDocument.SelectSet` and append selected entity info
 - **iLogic runner** — execute the generated VB rule directly via `iLogicVb.RunRule`
 - **Conversation export** — save the chat as `.md` or `.txt`
 - **Dockable panel** — replace floating `Form` with a docked `DockableWindow` via Inventor's UI API
 - **Parameter write-back** — parse Claude's parameter suggestions and apply them via the Parameters API
-- **Cloudflare Worker proxy** — route API calls through a Worker to avoid direct outbound firewall rules and keep the Anthropic key off the client machine
+
 
 ---
 
