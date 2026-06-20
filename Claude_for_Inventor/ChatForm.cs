@@ -205,12 +205,37 @@ namespace ClaudeForInventor
             try
             {
                 RefreshContext();
-                var reply = await _api.SendAsync(text, _history, _documentContext);
+
+                // Append header and snapshot RTF so we can replace raw stream with formatted text
+                AppendRun("\nClaude\n", Coral, FontLabel);
+                var rtfSnapshot = _chatBox.Rtf;
+                bool firstChunk = true;
+
+                var reply = await _api.SendAsync(text, _history, _documentContext, chunk =>
+                {
+                    void Apply()
+                    {
+                        if (firstChunk)
+                        {
+                            firstChunk = false;
+                            _statusLabel.Text = "Claude is responding…";
+                        }
+                        AppendRun(chunk, TextMain, FontBody);
+                        ScrollToEnd();
+                    }
+                    if (_chatBox.InvokeRequired) _chatBox.Invoke((Action)Apply);
+                    else Apply();
+                });
 
                 _history.Add(new ChatMessage("user",      text));
                 _history.Add(new ChatMessage("assistant", reply));
 
-                AppendAssistant(reply);
+                // Swap raw stream text for formatted markdown
+                _chatBox.Rtf = rtfSnapshot;
+                RenderMarkdown(reply);
+                AppendRun("\n", TextMain, FontBody);
+                ScrollToEnd();
+
                 TryExtractCode(reply);
             }
             catch (Exception ex)

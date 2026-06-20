@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -46,7 +47,8 @@ LIVE INVENTOR CONTEXT
         public async Task<string> SendAsync(
             string userMessage,
             IReadOnlyList<ChatMessage> history,
-            string documentContext)
+            string documentContext,
+            Action<string>? onChunk = null)
         {
             var apiKey = SettingsManager.GetApiKey();
             if (string.IsNullOrWhiteSpace(apiKey))
@@ -63,6 +65,7 @@ LIVE INVENTOR CONTEXT
             {
                 model      = Model,
                 max_tokens = 4096,
+                stream     = true,
                 system     = SystemTemplate.Replace("{context}", documentContext),
                 messages
             };
@@ -74,20 +77,50 @@ LIVE INVENTOR CONTEXT
                 JsonConvert.SerializeObject(requestBody, Formatting.None),
                 Encoding.UTF8, "application/json");
 
-            var res     = await Http.SendAsync(req);
-            var resJson = await res.Content.ReadAsStringAsync();
+            var res = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
 
             if (!res.IsSuccessStatusCode)
             {
+                var errBody = await res.Content.ReadAsStringAsync();
                 string detail;
-                try   { detail = JObject.Parse(resJson)["error"]?["message"]?.ToString() ?? resJson; }
-                catch { detail = resJson; }
+                try   { detail = JObject.Parse(errBody)["error"]?["message"]?.ToString() ?? errBody; }
+                catch { detail = errBody; }
                 throw new HttpRequestException($"Anthropic API {(int)res.StatusCode}: {detail}");
             }
 
-            var root = JObject.Parse(resJson);
-            return root["content"]?[0]?["text"]?.ToString()
-                ?? throw new InvalidOperationException("Unexpected API response structure.");
+            var fullText = new StringBuilder();
+            using var stream = await res.Content.ReadAsStreamAsync();
+            using var reader = new StreamReader(stream);
+
+            while (!reader.EndOfStream)
+            {
+                var line = await reader.ReadLineAsync();
+                if (line == null || !line.StartsWith("data: ", StringComparison.Ordinal)) continue;
+
+                var data = line.Substring(6);
+                if (data == "[DONE]") break;
+
+                try
+                {
+                    var ev = JObject.Parse(data);
+                    if (ev["type"]?.ToString() == "content_block_delta")
+                    {
+                        var delta = ev["delta"];
+                        if (delta?["type"]?.ToString() == "text_delta")
+                        {
+                            var text = delta["text"]?.ToString() ?? string.Empty;
+                            if (text.Length > 0)
+                            {
+                                fullText.Append(text);
+                                onChunk?.Invoke(text);
+                            }
+                        }
+                    }
+                }
+                catch { /* skip malformed SSE lines */ }
+            }
+
+            return fullText.ToString();
         }
     }
 
