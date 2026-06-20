@@ -52,6 +52,8 @@ namespace ClaudeForInventor
                 sb.AppendLine($"[Partial context — extraction error: {ex.Message}]");
             }
 
+            AppendSelectSet(sb, app);
+
             return sb.ToString();
         }
 
@@ -174,6 +176,73 @@ namespace ClaudeForInventor
                     $"| Views: {s.DrawingViews.Count}");
             }
         }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Selection context
+        // ──────────────────────────────────────────────────────────────────────
+
+        private static void AppendSelectSet(StringBuilder sb, Inventor.Application app)
+        {
+            try
+            {
+                var sel = app.ActiveDocument.SelectSet;
+                if (sel.Count == 0) return;
+
+                sb.AppendLine($"\nSelected Entities ({sel.Count}):");
+                int idx = 0;
+                foreach (object item in sel)
+                {
+                    if (++idx > 10) { sb.AppendLine("  … (truncated)"); break; }
+                    sb.AppendLine($"  {DescribeSelection(item)}");
+                }
+            }
+            catch { /* SelectSet not available in all contexts */ }
+        }
+
+        private static string DescribeSelection(object item)
+        {
+            try
+            {
+                return item switch
+                {
+                    Face face               => $"Face  [{FriendlySurface(face.SurfaceType)}]",
+                    Edge edge               => $"Edge  [{FriendlyCurve(edge.GeometryType)}]",
+                    Vertex _                => "Vertex",
+                    PartFeature pf          => $"Feature: {pf.Name}",
+                    ComponentOccurrence occ => $"Occurrence: {occ.Name}",
+                    WorkPlane wp            => $"Work Plane: {wp.Name}",
+                    WorkAxis wa             => $"Work Axis: {wa.Name}",
+                    WorkPoint wpt           => $"Work Point: {wpt.Name}",
+                    Parameter p             => $"Parameter: {p.Name} = {p.Expression}  [{p.get_Units()}]",
+                    SketchLine _            => "Sketch Line",
+                    SketchCircle _          => "Sketch Circle",
+                    SketchEntity _          => "Sketch Entity",
+                    _                       => item.GetType().Name
+                };
+            }
+            catch { return item.GetType().Name; }
+        }
+
+        private static string FriendlySurface(SurfaceTypeEnum t) => t switch
+        {
+            SurfaceTypeEnum.kPlaneSurface    => "plane",
+            SurfaceTypeEnum.kCylinderSurface => "cylinder",
+            SurfaceTypeEnum.kConeSurface     => "cone",
+            SurfaceTypeEnum.kSphereSurface   => "sphere",
+            SurfaceTypeEnum.kTorusSurface    => "torus",
+            _                                => t.ToString()
+        };
+
+        private static string FriendlyCurve(CurveTypeEnum t) => t switch
+        {
+            CurveTypeEnum.kLineCurve          => "line",
+            CurveTypeEnum.kLineSegmentCurve   => "line segment",
+            CurveTypeEnum.kCircleCurve        => "circle",
+            CurveTypeEnum.kCircularArcCurve   => "arc",
+            CurveTypeEnum.kEllipseFullCurve   => "ellipse",
+            CurveTypeEnum.kEllipticalArcCurve => "elliptical arc",
+            _                                 => t.ToString()
+        };
 
         // ──────────────────────────────────────────────────────────────────────
         // iProperties
