@@ -70,7 +70,7 @@ Source: "{#DllSrc}\Newtonsoft.Json.dll";     DestDir: "{app}"; Flags: ignorevers
 Filename: "{#RegAsm}"; Parameters: """{app}\ClaudeForInventor.dll"" /codebase /nologo"; Flags: runhidden; StatusMsg: "Registering COM component..."
 
 [UninstallRun]
-Filename: "{#RegAsm}"; Parameters: """{app}\ClaudeForInventor.dll"" /unregister /nologo"; Flags: runhidden
+Filename: "{#RegAsm}"; Parameters: """{app}\ClaudeForInventor.dll"" /unregister /nologo"; Flags: runhidden; RunOnceId: "UnregisterCOM"
 
 ; ── Pascal code ───────────────────────────────────────────────────────────────
 
@@ -96,7 +96,7 @@ var
 begin
   Dest := EnsureLogDir() + '\Install_'
         + GetDateTimeString('yyyymmdd_hhnnss', #0, #0) + '.log';
-  FileCopy(ExpandConstant('{log}'), Dest, False);
+  CopyFile(ExpandConstant('{log}'), Dest, False);
 end;
 
 { ── Uninstall log ───────────────────────────────────────────────────────────
