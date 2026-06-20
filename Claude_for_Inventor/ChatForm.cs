@@ -24,6 +24,7 @@ namespace ClaudeForInventor
         private readonly Button                _copyCodeBtn;
         private readonly Button                _settingsBtn;
         private readonly Button                _runILogicBtn;
+        private readonly Button                _exportBtn;
         private readonly Label                 _contextLabel;
         private readonly ToolStripStatusLabel  _statusLabel;
         private readonly ToolStripStatusLabel  _modelLabel;
@@ -87,13 +88,17 @@ namespace ClaudeForInventor
             _settingsBtn  = MakeToolBtn("⚙ Settings", 168);
             _runILogicBtn = MakeToolBtn("▶ Run iLogic", 256);
             _runILogicBtn.Width = 90;
+            _exportBtn    = MakeToolBtn("Export", 350);
+            _exportBtn.Width = 72;
             _copyCodeBtn .Enabled = false;
             _runILogicBtn.Enabled = false;
+            _exportBtn   .Enabled = false;
             _newChatBtn  .Click += (_, __) => ClearChat();
             _copyCodeBtn .Click += OnCopyCode;
             _settingsBtn .Click += (_, __) => { using var d = new SettingsDialog(); d.ShowDialog(this); };
             _runILogicBtn.Click += (_, __) => RunILogicRule();
-            toolbar.Controls.AddRange(new Control[] { _newChatBtn, _copyCodeBtn, _settingsBtn, _runILogicBtn });
+            _exportBtn   .Click += (_, __) => ExportChat();
+            toolbar.Controls.AddRange(new Control[] { _newChatBtn, _copyCodeBtn, _settingsBtn, _runILogicBtn, _exportBtn });
 
             // ── Input panel ───────────────────────────────────────────────────
             var inputPanel = new Panel { Height = 90, BackColor = BgPanel, Padding = new Padding(8) };
@@ -234,6 +239,7 @@ namespace ClaudeForInventor
 
                 _history.Add(new ChatMessage("user",      text));
                 _history.Add(new ChatMessage("assistant", reply));
+                _exportBtn.Enabled = true;
 
                 // Swap raw stream text for formatted markdown
                 _chatBox.Rtf = rtfSnapshot;
@@ -264,6 +270,7 @@ namespace ClaudeForInventor
             _copyCodeBtn .BackColor = Color.FromArgb(55, 55, 55);
             _runILogicBtn.Enabled   = false;
             _runILogicBtn.BackColor = Color.FromArgb(55, 55, 55);
+            _exportBtn   .Enabled   = false;
             AppendSystem("Chat cleared — new conversation started.");
         }
 
@@ -325,6 +332,72 @@ namespace ClaudeForInventor
             finally
             {
                 _runILogicBtn.Enabled = true;
+            }
+        }
+
+        private void ExportChat()
+        {
+            if (_history.Count == 0) return;
+
+            using var dlg = new SaveFileDialog
+            {
+                Title            = "Export chat",
+                Filter           = "Markdown (*.md)|*.md|Plain text (*.txt)|*.txt",
+                FilterIndex      = 1,
+                DefaultExt       = "md",
+                FileName         = $"Claude_Inventor_{DateTime.Now:yyyyMMdd_HHmm}"
+            };
+
+            if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+            bool isMarkdown = string.Equals(
+                System.IO.Path.GetExtension(dlg.FileName), ".md",
+                StringComparison.OrdinalIgnoreCase);
+
+            try
+            {
+                var sb = new StringBuilder();
+                var doc = InventorContextBuilder.SummaryLine(StandardAddInServer.InventorApp);
+
+                if (isMarkdown)
+                {
+                    sb.AppendLine($"# Claude for Inventor — Chat Export");
+                    sb.AppendLine($"*Document: {doc}*  ");
+                    sb.AppendLine($"*Exported: {DateTime.Now:yyyy-MM-dd HH:mm}*");
+                    sb.AppendLine();
+                    foreach (var msg in _history)
+                    {
+                        sb.AppendLine("---");
+                        sb.AppendLine();
+                        sb.AppendLine(msg.Role == "user" ? "## You" : "## Claude");
+                        sb.AppendLine();
+                        sb.AppendLine(msg.Content);
+                        sb.AppendLine();
+                    }
+                }
+                else
+                {
+                    var hr = new string('=', 72);
+                    sb.AppendLine("Claude for Inventor — Chat Export");
+                    sb.AppendLine($"Document : {doc}");
+                    sb.AppendLine($"Exported : {DateTime.Now:yyyy-MM-dd HH:mm}");
+                    sb.AppendLine(hr);
+                    foreach (var msg in _history)
+                    {
+                        sb.AppendLine();
+                        sb.AppendLine(msg.Role == "user" ? "You:" : "Claude:");
+                        sb.AppendLine();
+                        sb.AppendLine(msg.Content);
+                        sb.AppendLine(new string('-', 72));
+                    }
+                }
+
+                System.IO.File.WriteAllText(dlg.FileName, sb.ToString(), Encoding.UTF8);
+                AppendSystem($"✓ Chat exported to {System.IO.Path.GetFileName(dlg.FileName)}");
+            }
+            catch (Exception ex)
+            {
+                AppendSystem($"⚠ Export failed: {ex.Message}");
             }
         }
 
