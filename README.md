@@ -113,7 +113,7 @@ Re-running `regasm` is only needed if the DLL moves to a different path.
 
 ---
 
-## Install
+## Manual Install
 
 Copy all three files from `bin\Release\net48\` to Inventor's add-ins folder:
 
@@ -167,7 +167,7 @@ Click **Export** after any conversation to save it as `.md` (for notes/docs) or 
 
 ---
 
-## Uninstall
+## Manual Uninstall
 
 1. Remove the three files from the Addins folder.
 2. Unregister COM (optional):
