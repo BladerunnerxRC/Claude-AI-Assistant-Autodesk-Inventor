@@ -508,7 +508,9 @@ namespace ClaudeForInventor
                     foreach (Inventor.UserParameter up in parameters.UserParameters)
                     {
                         if (!string.Equals(up.Name, name, StringComparison.OrdinalIgnoreCase)) continue;
+                        var before = up.Expression;
                         up.Expression = expr;
+                        sb.AppendLine($"  ✓  {name}: {before} → {expr}");
                         found = true;
                         break;
                     }
@@ -519,14 +521,15 @@ namespace ClaudeForInventor
                         foreach (Inventor.Parameter p in parameters)
                         {
                             if (!string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)) continue;
+                            var before = p.Expression;
                             p.Expression = expr;
+                            sb.AppendLine($"  ✓  {name}: {before} → {expr}");
                             found = true;
                             break;
                         }
                     }
 
                     if (!found) throw new KeyNotFoundException($"Parameter \"{name}\" not found.");
-                    sb.AppendLine($"  ✓  {name} = {expr}");
                     ok++;
                 }
                 catch (Exception ex)
