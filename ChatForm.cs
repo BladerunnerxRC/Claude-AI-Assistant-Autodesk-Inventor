@@ -16,6 +16,7 @@ namespace ClaudeForInventor
         private string? _lastCode;
         private string  _lastCodeLanguage = "Code";
         private List<(string Name, string Expression)>? _lastParams;
+        private bool _ilogicRetryPending = false;
 
         // ── Controls ──────────────────────────────────────────────────────────
         private readonly RichTextBox           _chatBox;
@@ -266,6 +267,7 @@ namespace ClaudeForInventor
             finally
             {
                 SetBusy(false);
+                _ilogicRetryPending = false;
             }
         }
 
@@ -341,6 +343,12 @@ namespace ClaudeForInventor
             catch (Exception ex)
             {
                 AppendSystem($"⚠ iLogic run failed: {ex.Message}");
+                if (!_ilogicRetryPending)
+                {
+                    _ilogicRetryPending = true;
+                    var errMsg = $"The iLogic rule failed with this error:\n```\n{ex.Message}\n```\nPlease fix the code.";
+                    BeginInvoke((Action)(() => { _inputBox.Text = errMsg; SendMessage(); }));
+                }
             }
             finally
             {
