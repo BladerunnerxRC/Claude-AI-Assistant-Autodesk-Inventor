@@ -103,6 +103,8 @@ namespace ClaudeForInventor
             settingsMenu.Items.Add(new ToolStripSeparator());
             settingsMenu.Items.Add("ℹ  About",      null, (_, __) => { using var d = new AboutDialog();  d.ShowDialog(this); });
             settingsMenu.Items.Add("?  Help",        null, (_, __) => { using var d = new HelpDialog();   d.ShowDialog(this); });
+            settingsMenu.Items.Add(new ToolStripSeparator());
+            settingsMenu.Items.Add("⊞ Send BOM to Claude", null, (_, __) => SendBom());
             _settingsBtn.Click += (_, __) => settingsMenu.Show(_settingsBtn, new Point(0, _settingsBtn.Height));
             _runILogicBtn  .Click += (_, __) => RunILogicRule();
             _exportBtn     .Click += (_, __) => ExportChat();
@@ -460,6 +462,18 @@ namespace ClaudeForInventor
                     result.Add((name, expr));
             }
             return result;
+        }
+
+        private void SendBom()
+        {
+            var bom = InventorContextBuilder.BuildBomText(StandardAddInServer.InventorApp);
+            if (!bom.StartsWith("BOM —"))
+            {
+                AppendSystem($"⚠ {bom}");
+                return;
+            }
+            _inputBox.Text = $"Analyze this assembly BOM and flag any concerns:\n\n{bom}";
+            SendMessage();
         }
 
         private void ApplyParameters()

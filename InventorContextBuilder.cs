@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using Inventor;
 
@@ -55,6 +56,70 @@ namespace ClaudeForInventor
             AppendSelectSet(sb, app);
 
             return sb.ToString();
+        }
+
+        /// <summary>Recursively builds a flat BOM from the active assembly.</summary>
+        public static string BuildBomText(Inventor.Application? app)
+        {
+            if (app?.ActiveDocument == null) return "No document is open.";
+            if (app.ActiveDocument.DocumentType != DocumentTypeEnum.kAssemblyDocumentObject)
+                return "BOM requires an open Assembly document (.iam).";
+
+            var asm     = (AssemblyDocument)app.ActiveDocument;
+            var entries = new List<BomEntry>();
+            WalkBom(asm.ComponentDefinition.Occurrences, entries);
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"BOM — {asm.DisplayName}  ({entries.Count} unique part(s)):");
+            int idx = 1;
+            foreach (var e in entries)
+            {
+                sb.Append($"  {idx++,3}. {e.Qty,3}x  {e.Name}");
+                if (!string.IsNullOrEmpty(e.PartNumber)) sb.Append($"  [PN: {e.PartNumber}]");
+                if (!string.IsNullOrEmpty(e.Material))   sb.Append($"  [{e.Material}]");
+                sb.AppendLine();
+            }
+            return sb.ToString();
+        }
+
+        private static void WalkBom(ComponentOccurrences occs, List<BomEntry> entries)
+        {
+            foreach (ComponentOccurrence occ in occs)
+            {
+                try
+                {
+                    var occDoc = occ.Definition?.Document;
+                    if (occDoc is PartDocument part)
+                    {
+                        var key      = part.DisplayName;
+                        var existing = entries.Find(e => string.Equals(e.Name, key, StringComparison.OrdinalIgnoreCase));
+                        if (existing != null)
+                        {
+                            existing.Qty++;
+                        }
+                        else
+                        {
+                            string pn = "", mat = "";
+                            try { pn  = part.PropertySets["Design Tracking Properties"]["Part Number"]?.Value as string ?? ""; } catch { }
+                            try { mat = part.ComponentDefinition.Material?.Name ?? ""; } catch { }
+                            entries.Add(new BomEntry { Name = key, PartNumber = pn, Material = mat, Qty = 1 });
+                        }
+                    }
+                    else if (occDoc is AssemblyDocument subAsm)
+                    {
+                        WalkBom(subAsm.ComponentDefinition.Occurrences, entries);
+                    }
+                }
+                catch { }
+            }
+        }
+
+        private sealed class BomEntry
+        {
+            public string Name       = "";
+            public string PartNumber = "";
+            public string Material   = "";
+            public int    Qty;
         }
 
         /// <summary>Short one-liner for the context panel header.</summary>
