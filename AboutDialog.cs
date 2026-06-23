@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -8,7 +9,7 @@ namespace ClaudeForInventor
         public AboutDialog()
         {
             Text            = "About Claude for Inventor";
-            Size            = new Size(430, 285);
+            Size            = new Size(430, 310);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition   = FormStartPosition.CenterParent;
             MaximizeBox     = false;
@@ -31,11 +32,11 @@ namespace ClaudeForInventor
 
             var title = new Label
             {
-                Text      = "Claude AI for Autodesk Inventor",
-                Font      = new Font("Segoe UI", 11f, FontStyle.Bold),
+                Text     = "Claude AI for Autodesk Inventor",
+                Font     = new Font("Segoe UI", 11f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(218, 218, 218),
-                AutoSize  = true,
-                Left      = 92, Top = 22
+                AutoSize = true,
+                Left     = 92, Top = 22
             };
 
             var version = new Label
@@ -73,7 +74,7 @@ namespace ClaudeForInventor
                 Font      = new Font("Segoe UI", 8.5f),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 AutoSize  = true,
-                Left      = 20, Top = 175
+                Left      = 20, Top = 178
             };
 
             var openSource = new Label
@@ -82,24 +83,36 @@ namespace ClaudeForInventor
                 Font      = new Font("Segoe UI", 8f, FontStyle.Italic),
                 ForeColor = Color.FromArgb(85, 85, 85),
                 AutoSize  = true,
-                Left      = 20, Top = 195
+                Left      = 20, Top = 198
             };
+
+            var githubLink = new LinkLabel
+            {
+                Text      = "github.com/BladerunnerxRC/Claude-AI-Assistant-Autodesk-Inventor",
+                Font      = new Font("Segoe UI", 8f),
+                Left      = 20, Top = 216,
+                Width     = 375,
+                AutoSize  = true,
+                LinkColor = Color.FromArgb(100, 160, 220)
+            };
+            githubLink.LinkClicked += (_, __) =>
+                Process.Start(new ProcessStartInfo("https://github.com/BladerunnerxRC/Claude-AI-Assistant-Autodesk-Inventor") { UseShellExecute = true });
 
             var closeBtn = new Button
             {
-                Text        = "Close",
-                Width       = 80, Height = 28,
-                Left        = 325, Top = 180,
-                BackColor   = Color.FromArgb(60, 60, 60),
-                ForeColor   = Color.White,
-                FlatStyle   = FlatStyle.Flat,
+                Text         = "Close",
+                Width        = 80, Height = 28,
+                Left         = 325, Top = 245,
+                BackColor    = Color.FromArgb(60, 60, 60),
+                ForeColor    = Color.White,
+                FlatStyle    = FlatStyle.Flat,
                 DialogResult = DialogResult.OK,
-                Cursor      = Cursors.Hand
+                Cursor       = Cursors.Hand
             };
             closeBtn.FlatAppearance.BorderSize = 0;
 
             Controls.AddRange(new System.Windows.Forms.Control[]
-                { logo, title, version, sep, desc, credit, openSource, closeBtn });
+                { logo, title, version, sep, desc, credit, openSource, githubLink, closeBtn });
 
             AcceptButton = closeBtn;
         }

@@ -15,10 +15,11 @@ namespace ClaudeForInventor
         // Shared so ChatForm can call Inventor API
         internal static Inventor.Application? InventorApp { get; private set; }
 
-        private ButtonDefinition?  _chatButton;
-        private ChatForm?          _chatForm;
-        private DockableWindow?    _dockWin;
-        private DockWinNativeHook? _dockWinHook;
+        private ButtonDefinition?   _chatButton;
+        private ChatForm?           _chatForm;
+        private DockableWindow?     _dockWin;
+        private DockWinNativeHook?  _dockWinHook;
+        private ApplicationEvents?  _appEvents;
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
@@ -33,6 +34,9 @@ namespace ClaudeForInventor
             CreateButton();
             CreateDockableWindow();
             if (firstTime) AddToRibbons();
+
+            _appEvents = InventorApp.ApplicationEvents;
+            _appEvents.OnActivateDocument += OnActivateDocument;
         }
 
         public void Deactivate()
@@ -44,6 +48,12 @@ namespace ClaudeForInventor
             if (_dockWin != null) { Marshal.ReleaseComObject(_dockWin); _dockWin = null; }
 
             if (_chatButton != null) _chatButton.OnExecute -= OnOpenChat;
+
+            if (_appEvents != null)
+            {
+                _appEvents.OnActivateDocument -= OnActivateDocument;
+                _appEvents = null;
+            }
 
             if (InventorApp != null)
             {
@@ -127,6 +137,17 @@ namespace ClaudeForInventor
                 _chatForm.BringToFront();   // fallback: float if DW unavailable
 
             _chatForm.RefreshContext();
+        }
+
+        private void OnActivateDocument(Document documentObject, EventTimingEnum beforeOrAfter,
+            NameValueMap context, out HandlingCodeEnum handlingCode)
+        {
+            handlingCode = HandlingCodeEnum.kEventNotHandled;
+            if (beforeOrAfter == EventTimingEnum.kAfter &&
+                _chatForm != null && !_chatForm.IsDisposed)
+            {
+                _chatForm.BeginInvoke((Action)_chatForm.RefreshContext);
+            }
         }
 
         private void CreateDockableWindow()

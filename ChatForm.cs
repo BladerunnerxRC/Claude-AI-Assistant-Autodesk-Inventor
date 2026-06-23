@@ -126,6 +126,7 @@ namespace ClaudeForInventor
                 AcceptsReturn = true        // Shift+Enter = newline; Enter = send (handled below)
             };
             _inputBox.KeyDown += OnInputKeyDown;
+            _inputBox.ContextMenuStrip = BuildInputContextMenu();
 
             _sendBtn = new Button
             {
@@ -169,6 +170,7 @@ namespace ClaudeForInventor
                 WordWrap    = true,
                 Padding     = new Padding(8)
             };
+            _chatBox.ContextMenuStrip = BuildChatContextMenu();
 
             // ── Dock order (bottom-to-top): strip → toolbar → input → context → fill ──
             statusStrip.Dock  = DockStyle.Bottom;
@@ -920,6 +922,7 @@ namespace ClaudeForInventor
         private const int WM_KEYDOWN     = 0x0100;
         private const int VK_RETURN      = 0x0D;
         private const int VK_SHIFT       = 0x10;
+        private const int VK_CONTROL     = 0x11;
         private const int VK_SPACE       = 0x20;
         private const int VK_DELETE      = 0x2E;
 
@@ -954,13 +957,17 @@ namespace ClaudeForInventor
                 int vk = Marshal.ReadInt32(lParam);
                 if (vk == VK_RETURN)
                 {
-                    bool shiftDown = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
-                    if (!shiftDown)
+                    bool shiftDown = (GetKeyState(VK_SHIFT)   & 0x8000) != 0;
+                    bool ctrlDown  = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+                    if (shiftDown || ctrlDown)
                     {
-                        _inputBox.BeginInvoke((Action)SendMessage);
-                        return (IntPtr)1;   // consume — prevent newline insertion
+                        // Shift+Enter / Ctrl+Enter: insert newline directly (synchronous,
+                        // same pattern as VK_SPACE below — BeginInvoke loses focus timing).
+                        _inputBox.SelectedText = "\r\n";
+                        return (IntPtr)1;
                     }
-                    // Shift+Enter: fall through so TextBox inserts the newline
+                    _inputBox.BeginInvoke((Action)SendMessage);
+                    return (IntPtr)1;
                 }
                 if (vk == VK_SPACE)
                 {
@@ -986,6 +993,38 @@ namespace ClaudeForInventor
         // ─────────────────────────────────────────────────────────────────────
         // Helpers
         // ─────────────────────────────────────────────────────────────────────
+
+        private ContextMenuStrip BuildInputContextMenu()
+        {
+            var menu = new ContextMenuStrip();
+            menu.Opening += (_, __) =>
+            {
+                bool hasSelection = _inputBox.SelectionLength > 0;
+                bool hasClipboard = Clipboard.ContainsText();
+                menu.Items["Cut"]  .Enabled = hasSelection;
+                menu.Items["Copy"] .Enabled = hasSelection;
+                menu.Items["Paste"].Enabled = hasClipboard;
+            };
+            menu.Items.Add(new ToolStripMenuItem("Cut",        null, (_, __) => _inputBox.Cut())        { Name = "Cut"       });
+            menu.Items.Add(new ToolStripMenuItem("Copy",       null, (_, __) => _inputBox.Copy())       { Name = "Copy"      });
+            menu.Items.Add(new ToolStripMenuItem("Paste",      null, (_, __) => _inputBox.Paste())      { Name = "Paste"     });
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(new ToolStripMenuItem("Select All", null, (_, __) => _inputBox.SelectAll())  { Name = "SelectAll" });
+            return menu;
+        }
+
+        private ContextMenuStrip BuildChatContextMenu()
+        {
+            var menu = new ContextMenuStrip();
+            menu.Opening += (_, __) =>
+            {
+                menu.Items["Copy"].Enabled = _chatBox.SelectionLength > 0;
+            };
+            menu.Items.Add(new ToolStripMenuItem("Copy",       null, (_, __) => _chatBox.Copy())       { Name = "Copy"      });
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(new ToolStripMenuItem("Select All", null, (_, __) => _chatBox.SelectAll())  { Name = "SelectAll" });
+            return menu;
+        }
 
         private void SetBusy(bool busy)
         {
