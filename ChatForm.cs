@@ -490,18 +490,37 @@ namespace ClaudeForInventor
                 return;
             }
 
-            if (parameters == null)
-            {
-                AppendSystem("⚠ Parameter write-back is only supported for Part and Assembly documents.");
-                return;
-            }
-
             int ok = 0, fail = 0;
             var sb = new StringBuilder();
             foreach (var (name, expr) in _lastParams)
             {
                 try
                 {
+                    // Feature suppression: "FeatureName.Suppressed = True/False"
+                    const string suppressSuffix = ".Suppressed";
+                    if (name.EndsWith(suppressSuffix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var featureName = name.Substring(0, name.Length - suppressSuffix.Length);
+                        bool suppress = string.Equals(expr.Trim(), "True", StringComparison.OrdinalIgnoreCase);
+                        if (doc.DocumentType != Inventor.DocumentTypeEnum.kPartDocumentObject)
+                            throw new InvalidOperationException("Feature suppression is only supported for Part documents.");
+                        bool featFound = false;
+                        foreach (Inventor.PartFeature f in ((Inventor.PartDocument)doc).ComponentDefinition.Features)
+                        {
+                            if (!string.Equals(f.Name, featureName, StringComparison.OrdinalIgnoreCase)) continue;
+                            f.Suppressed = suppress;
+                            sb.AppendLine($"  ✓  {featureName}.Suppressed = {suppress}");
+                            featFound = true;
+                            ok++;
+                            break;
+                        }
+                        if (!featFound) throw new KeyNotFoundException($"Feature \"{featureName}\" not found.");
+                        continue;
+                    }
+
+                    if (parameters == null)
+                        throw new InvalidOperationException("Parameter write-back not available for this document type.");
+
                     bool found = false;
 
                     // User parameters first — safest to modify
