@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  ClaudeForInventor.addin
+  
+  INSTALL: Copy this file to one of these locations (choose one):
+    Per-user  : %APPDATA%\Autodesk\Inventor 2025\Addins\
+    All-users : C:\ProgramData\Autodesk\Inventor 2025\Addins\
+  
+  The DLL must be in the same directory as this .addin file,
+  OR the Assembly path below must be absolute.
+  
+  Supported version numbers:
+    Inventor 2023 = 27   2024 = 28   2025 = 29   2026 = 30   2027 = 31
+  Adjust SupportedSoftwareVersionGreaterThan to your oldest supported version.
+-->
+<Addin Type="Standard">
+
+  <!-- Must match the [Guid] attribute on StandardAddInServer -->
+  <ClassId>{7B3F9A21-C4E8-4D12-B5A6-F0E2D8C3A9B7}</ClassId>
+
+  <!-- Used internally by Inventor to identify this client -->
+  <ClientId>{7B3F9A21-C4E8-4D12-B5A6-F0E2D8C3A9B7}</ClientId>
+
+  <DisplayName>Claude AI Assistant</DisplayName>
+  <Description>AI-powered Inventor design assistant using Anthropic Claude Opus 4.8</Description>
+
+  <!-- Relative or absolute path to the compiled DLL -->
+  <Assembly>ClaudeForInventor.dll</Assembly>
+
+  <!-- 1 = load on Inventor startup; 0 = manual load only -->
+  <LoadOnStartUp>1</LoadOnStartUp>
+
+  <!-- Allow the user to unload from the Add-In Manager -->
+  <UserUnloadable>1</UserUnloadable>
+
+  <!-- Only load for Inventor 2024 (v28) and later -->
+  <SupportedSoftwareVersionGreaterThan>27</SupportedSoftwareVersionGreaterThan>
+
+</Addin>

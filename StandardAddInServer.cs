@@ -15,10 +15,11 @@ namespace ClaudeForInventor
         // Shared so ChatForm can call Inventor API
         internal static Inventor.Application? InventorApp { get; private set; }
 
-        private ButtonDefinition?  _chatButton;
-        private ChatForm?          _chatForm;
-        private DockableWindow?    _dockWin;
-        private DockWinNativeHook? _dockWinHook;
+        private ButtonDefinition?   _chatButton;
+        private ChatForm?           _chatForm;
+        private DockableWindow?     _dockWin;
+        private DockWinNativeHook?  _dockWinHook;
+        private ApplicationEvents?  _appEvents;
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
@@ -33,6 +34,9 @@ namespace ClaudeForInventor
             CreateButton();
             CreateDockableWindow();
             if (firstTime) AddToRibbons();
+
+            _appEvents = InventorApp.ApplicationEvents;
+            _appEvents.OnActivateDocument += OnActivateDocument;
         }
 
         public void Deactivate()
@@ -44,6 +48,12 @@ namespace ClaudeForInventor
             if (_dockWin != null) { Marshal.ReleaseComObject(_dockWin); _dockWin = null; }
 
             if (_chatButton != null) _chatButton.OnExecute -= OnOpenChat;
+
+            if (_appEvents != null)
+            {
+                _appEvents.OnActivateDocument -= OnActivateDocument;
+                _appEvents = null;
+            }
 
             if (InventorApp != null)
             {
@@ -129,6 +139,17 @@ namespace ClaudeForInventor
             _chatForm.RefreshContext();
         }
 
+        private void OnActivateDocument(Document documentObject, EventTimingEnum beforeOrAfter,
+            NameValueMap context, out HandlingCodeEnum handlingCode)
+        {
+            handlingCode = HandlingCodeEnum.kEventNotHandled;
+            if (beforeOrAfter == EventTimingEnum.kAfter &&
+                _chatForm != null && !_chatForm.IsDisposed)
+            {
+                _chatForm.BeginInvoke((Action)_chatForm.RefreshContext);
+            }
+        }
+
         private void CreateDockableWindow()
         {
             try
@@ -154,6 +175,7 @@ namespace ClaudeForInventor
             _dockWin.DisableCloseButton    = false;
             _dockWin.DockingState          = DockingStateEnum.kDockRight;
             _dockWin.Width                 = 540;
+            _dockWin.Visible               = false;  // always start hidden; user opens via toolbar
         }
 
         // ──────────────────────────────────────────────────────────────────────
@@ -162,16 +184,7 @@ namespace ClaudeForInventor
 
         private stdole.IPictureDisp MakeIconPicture()
         {
-            using var bmp = new Bitmap(32, 32);
-            using (var g = Graphics.FromImage(bmp))
-            {
-                g.Clear(System.Drawing.Color.FromArgb(204, 75, 55));   // Anthropic coral
-                g.FillEllipse(Brushes.White,
-                    new RectangleF(4, 4, 24, 24));
-                using var f = new Font("Segoe UI", 11f, FontStyle.Bold);
-                g.DrawString("C", f, new SolidBrush(System.Drawing.Color.FromArgb(204, 75, 55)),
-                    new PointF(9f, 7f));
-            }
+            using var bmp = AppIcon.Make(32);
             return AxHostConverter.GetIPictureDisp(bmp);
         }
 

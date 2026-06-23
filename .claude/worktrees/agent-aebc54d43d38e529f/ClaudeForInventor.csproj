@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>ClaudeForInventor</AssemblyName>
+    <RootNamespace>ClaudeForInventor</RootNamespace>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+
+    <!-- Update this to match your Inventor installation -->
+    <InventorBin>C:\Program Files\Autodesk\Inventor 2027\Bin\</InventorBin>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Inventor Interop - do NOT embed; must load from Inventor's bin at runtime -->
+    <Reference Include="Autodesk.Inventor.Interop">
+      <HintPath>$(InventorBin)Autodesk.Inventor.Interop.dll</HintPath>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+      <Private>false</Private>
+    </Reference>
+    <!-- stdole: ships with Inventor; required for IPictureDisp icon conversion -->
+    <Reference Include="stdole">
+      <HintPath>$(InventorBin)stdole.dll</HintPath>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+      <Private>false</Private>
+    </Reference>
+    <!-- System.Net.Http must be referenced explicitly in net48 SDK-style projects -->
+    <Reference Include="System.Net.Http" />
+    <!-- Microsoft.CSharp required for `dynamic` dispatch (iLogic automation object) -->
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="ClaudeForInventor.addin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!--
+    POST-BUILD: Registers the DLL for COM interop.
+    Run once as Administrator, or use the manual regasm command in README.
+  -->
+  <Target Name="RegisterCOM" AfterTargets="Build">
+    <Exec Command="&quot;$(windir)\Microsoft.NET\Framework64\v4.0.30319\regasm.exe&quot; &quot;$(TargetPath)&quot; /codebase /nologo"
+          ContinueOnError="true" />
+  </Target>
+
+</Project>

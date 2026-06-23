@@ -19,7 +19,7 @@ namespace ClaudeForInventor
 
         private const string ApiUrl  = "https://api.anthropic.com/v1/messages";
         public  const string Model   = "claude-opus-4-8";
-        public  const string Version = "1.1";
+        public  const string Version = "1.2";
 
         private const string SystemTemplate =
 @"You are an expert Autodesk Inventor CAD engineer embedded directly inside Inventor.
