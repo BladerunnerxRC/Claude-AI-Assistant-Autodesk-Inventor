@@ -103,6 +103,9 @@ namespace ClaudeForInventor
             settingsMenu.Items.Add(new ToolStripSeparator());
             settingsMenu.Items.Add("ℹ  About",      null, (_, __) => { using var d = new AboutDialog();  d.ShowDialog(this); });
             settingsMenu.Items.Add("?  Help",        null, (_, __) => { using var d = new HelpDialog();   d.ShowDialog(this); });
+            settingsMenu.Items.Add(new ToolStripSeparator());
+            settingsMenu.Items.Add("💾 Save Conversation…", null, (_, __) => SaveConversation());
+            settingsMenu.Items.Add("📂 Load Conversation…", null, (_, __) => LoadConversation());
             _settingsBtn.Click += (_, __) => settingsMenu.Show(_settingsBtn, new Point(0, _settingsBtn.Height));
             _runILogicBtn  .Click += (_, __) => RunILogicRule();
             _exportBtn     .Click += (_, __) => ExportChat();
@@ -412,6 +415,65 @@ namespace ClaudeForInventor
             {
                 AppendSystem($"⚠ Export failed: {ex.Message}");
             }
+        }
+
+        private void SaveConversation()
+        {
+            if (_history.Count == 0) { AppendSystem("Nothing to save — start a conversation first."); return; }
+            var firstMsg  = _history.Count > 0 ? _history[0].Content : "";
+            var autoName  = firstMsg.Length > 50 ? firstMsg.Substring(0, 50) + "…" : firstMsg;
+            var name = ShowInputDialog("Conversation name:", "Save Conversation", autoName);
+            if (name == null) return;
+            try { ConversationStore.Save(name, _history); AppendSystem($"✓ Conversation saved as \"{name}\"."); }
+            catch (Exception ex) { AppendSystem($"⚠ Save failed: {ex.Message}"); }
+        }
+
+        private void LoadConversation()
+        {
+            var saved = ConversationStore.ListAll();
+            if (saved.Count == 0) { AppendSystem("No saved conversations found."); return; }
+
+            using var dlg    = new Form { Text = "Load Conversation", Width = 500, Height = 340, FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent, BackColor = Color.FromArgb(34, 34, 34), ForeColor = TextMain, MaximizeBox = false, MinimizeBox = false, ShowInTaskbar = false };
+            using var list   = new ListBox { Left = 12, Top = 12, Width = 464, Height = 240, BackColor = Color.FromArgb(42, 42, 42), ForeColor = TextMain, BorderStyle = BorderStyle.FixedSingle, IntegralHeight = false };
+            using var btnLoad = new Button { Text = "Load",   Left = 282, Top = 264, Width = 90, DialogResult = DialogResult.OK,     BackColor = Coral,                          ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            using var btnDel  = new Button { Text = "Delete", Left = 182, Top = 264, Width = 90,                                     BackColor = Color.FromArgb(100, 40, 30),    ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            using var btnCan  = new Button { Text = "Cancel", Left = 382, Top = 264, Width = 90, DialogResult = DialogResult.Cancel, BackColor = Color.FromArgb(55, 55, 55),     ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            btnLoad.FlatAppearance.BorderSize = btnDel.FlatAppearance.BorderSize = btnCan.FlatAppearance.BorderSize = 0;
+            foreach (var s in saved) list.Items.Add(s);
+            if (list.Items.Count > 0) list.SelectedIndex = 0;
+            btnDel.Click += (_, __) =>
+            {
+                if (list.SelectedItem is SavedConversation sel) { ConversationStore.Delete(sel.FilePath!); list.Items.Remove(sel); }
+            };
+            dlg.Controls.AddRange(new Control[] { list, btnLoad, btnDel, btnCan });
+            dlg.AcceptButton = btnLoad; dlg.CancelButton = btnCan;
+
+            if (dlg.ShowDialog(this) != DialogResult.OK || !(list.SelectedItem is SavedConversation chosen)) return;
+            var conv = ConversationStore.LoadFrom(chosen.FilePath!);
+            if (conv == null) { AppendSystem("⚠ Failed to load conversation."); return; }
+            ClearChat();
+            foreach (var m in conv.Messages)
+            {
+                _history.Add(new ChatMessage(m.Role, m.Content));
+                if (m.Role == "user") AppendUser(m.Content);
+                else AppendAssistant(m.Content);
+            }
+            _exportBtn.Enabled = _history.Count > 0;
+            AppendSystem($"✓ Loaded \"{conv.Name}\" ({conv.Messages.Count} messages).");
+        }
+
+        private string? ShowInputDialog(string prompt, string title, string defaultText)
+        {
+            using var dlg    = new Form { Text = title, Width = 420, Height = 134, FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent, BackColor = Color.FromArgb(34, 34, 34), ForeColor = TextMain, MaximizeBox = false, MinimizeBox = false, ShowInTaskbar = false };
+            using var lbl    = new Label  { Text = prompt, Left = 12, Top = 12, Width = 388, AutoSize = false, ForeColor = Color.FromArgb(170, 170, 170) };
+            using var txt    = new TextBox { Left = 12, Top = 34, Width = 388, Text = defaultText, BackColor = Color.FromArgb(42, 42, 42), ForeColor = TextMain, BorderStyle = BorderStyle.FixedSingle };
+            using var btnOk  = new Button { Text = "Save",   Left = 228, Top = 62, Width = 80, DialogResult = DialogResult.OK,     BackColor = Coral,                      ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            using var btnCan = new Button { Text = "Cancel", Left = 318, Top = 62, Width = 80, DialogResult = DialogResult.Cancel, BackColor = Color.FromArgb(55, 55, 55), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            btnOk.FlatAppearance.BorderSize = btnCan.FlatAppearance.BorderSize = 0;
+            dlg.Controls.AddRange(new Control[] { lbl, txt, btnOk, btnCan });
+            dlg.AcceptButton = btnOk; dlg.CancelButton = btnCan;
+            txt.Select(); txt.SelectAll();
+            return dlg.ShowDialog(this) == DialogResult.OK && !string.IsNullOrWhiteSpace(txt.Text) ? txt.Text.Trim() : null;
         }
 
         private void TryExtractParams(string response)
