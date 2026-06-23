@@ -11,3 +11,16 @@ C:\Users\Thoma\OneDrive\Documents\GitHub\Autodesk-Inventor\Claude_for_Inventor\o
 C:\Users\Thoma\OneDrive\Documents\GitHub\Autodesk-Inventor\Claude_for_Inventor\obj\Debug\net48\ClaudeFo.E36FBE23.Up2Date
 C:\Users\Thoma\OneDrive\Documents\GitHub\Autodesk-Inventor\Claude_for_Inventor\obj\Debug\net48\ClaudeForInventor.dll
 C:\Users\Thoma\OneDrive\Documents\GitHub\Autodesk-Inventor\Claude_for_Inventor\obj\Debug\net48\ClaudeForInventor.pdb
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\obj\Debug\net48\ClaudeForInventor.csproj.AssemblyReference.cache
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\obj\Debug\net48\ClaudeForInventor.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\obj\Debug\net48\ClaudeForInventor.AssemblyInfoInputs.cache
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\obj\Debug\net48\ClaudeForInventor.AssemblyInfo.cs
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\obj\Debug\net48\ClaudeForInventor.csproj.CoreCompileInputs.cache
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\obj\Debug\net48\ClaudeForInventor.sourcelink.json
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\obj\Debug\net48\ClaudeForInventor.dll
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\obj\Debug\net48\ClaudeForInventor.pdb
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\bin\Debug\net48\ClaudeForInventor.addin
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\bin\Debug\net48\ClaudeForInventor.dll
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\bin\Debug\net48\ClaudeForInventor.pdb
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\bin\Debug\net48\Newtonsoft.Json.dll
+C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\obj\Debug\net48\ClaudeFo.E36FBE23.Up2Date
