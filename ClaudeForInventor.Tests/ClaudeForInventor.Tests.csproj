@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>ClaudeForInventor.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NUnit"                   Version="3.13.3" />
+    <PackageReference Include="NUnit3TestAdapter"        Version="4.5.0"  />
+    <PackageReference Include="Microsoft.NET.Test.Sdk"  Version="17.5.0" />
+    <PackageReference Include="Newtonsoft.Json"          Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClaudeForInventor.csproj" />
+  </ItemGroup>
+
+  <!-- Copy Inventor interop DLLs to test output so the test runner can resolve them. -->
+  <PropertyGroup>
+    <InventorBin>C:\Program Files\Autodesk\Inventor 2027\Bin\</InventorBin>
+  </PropertyGroup>
+  <Target Name="CopyInventorDlls" AfterTargets="Build">
+    <Copy SourceFiles="$(InventorBin)Autodesk.Inventor.Interop.dll"
+          DestinationFolder="$(OutDir)" ContinueOnError="true" />
+    <Copy SourceFiles="$(InventorBin)stdole.dll"
+          DestinationFolder="$(OutDir)" ContinueOnError="true" />
+  </Target>
+
+</Project>

@@ -16,6 +16,11 @@
     <InventorBin>C:\Program Files\Autodesk\Inventor 2027\Bin\</InventorBin>
   </PropertyGroup>
 
+  <!-- Exclude test project files from the main assembly build -->
+  <ItemGroup>
+    <Compile Remove="ClaudeForInventor.Tests\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- Inventor Interop - do NOT embed; must load from Inventor's bin at runtime -->
     <Reference Include="Autodesk.Inventor.Interop">

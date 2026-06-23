@@ -442,25 +442,8 @@ namespace ClaudeForInventor
             }
         }
 
-        private static List<(string Name, string Expression)> ParseParamBlock(string block)
-        {
-            var result = new List<(string, string)>();
-            foreach (var rawLine in block.Split('\n'))
-            {
-                var line = rawLine.Trim('\r', ' ', '\t');
-                if (string.IsNullOrEmpty(line) || line.StartsWith("//") || line.StartsWith("#"))
-                    continue;
-
-                int eq = line.IndexOf('=');
-                if (eq <= 0) continue;
-
-                var name = line.Substring(0, eq).Trim();
-                var expr = line.Substring(eq + 1).Trim();
-                if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(expr))
-                    result.Add((name, expr));
-            }
-            return result;
-        }
+        private static List<(string Name, string Expression)> ParseParamBlock(string block) =>
+            ParamBlockParser.Parse(block);
 
         private void ApplyParameters()
         {
