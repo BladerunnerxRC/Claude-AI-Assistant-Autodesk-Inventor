@@ -1,6 +1,6 @@
 is_global = true
 build_property.RootNamespace = ClaudeForInventor.Tests
-build_property.ProjectDir = C:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\ClaudeForInventor.Tests\
+build_property.ProjectDir = c:\Users\Thoma\OneDrive\Documents\GitHub\Claude-AI-Assistant-Autodesk-Inventor\ClaudeForInventor.Tests\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.CsWinRTUseWindowsUIXamlProjections = false
