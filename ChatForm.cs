@@ -330,11 +330,9 @@ namespace ClaudeForInventor
                 var doc = app.ActiveDocument;
 
                 // Delete the existing rule if present, then re-add with updated code.
-                // SetRuleText does not exist in the iLogic API; delete+add is the
-                // correct update pattern.
+                // AddRule auto-executes the rule on creation, so RunRule is not called.
                 try { iLogic.DeleteRule(doc, RuleName); } catch { }
                 iLogic.AddRule(doc, RuleName, _lastCode);
-                iLogic.RunRule(doc, RuleName);
                 AppendSystem($"✓ iLogic rule \"{RuleName}\" ran successfully.");
             }
             catch (Exception ex)
