@@ -329,16 +329,11 @@ namespace ClaudeForInventor
                 dynamic iLogic = addin.Automation;
                 var doc = app.ActiveDocument;
 
-                // Create or update the rule.
-                // AddRule auto-executes when given code, so create with empty body
-                // first to avoid a double-run, then set the real code via SetRuleText.
-                string? existing = null;
-                try { existing = iLogic.GetRuleText(doc, RuleName); } catch { }
-
-                if (string.IsNullOrEmpty(existing))
-                    iLogic.AddRule(doc, RuleName, "");
-
-                iLogic.SetRuleText(doc, RuleName, _lastCode);
+                // Delete the existing rule if present, then re-add with updated code.
+                // SetRuleText does not exist in the iLogic API; delete+add is the
+                // correct update pattern.
+                try { iLogic.DeleteRule(doc, RuleName); } catch { }
+                iLogic.AddRule(doc, RuleName, _lastCode);
                 iLogic.RunRule(doc, RuleName);
                 AppendSystem($"✓ iLogic rule \"{RuleName}\" ran successfully.");
             }
