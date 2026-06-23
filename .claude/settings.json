@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh pr create --base main --head feature/sub-assembly-context --title 'feat: annotate assembly occurrences with sub-assembly depth and part materials' --body ' *)",
+      "Bash(gh pr create --base main --head feature/feature-suppression-writeback --title 'feat: feature suppression write-back via params block' --body ' *)",
+      "Bash(gh pr create --base main --head feature/named-conversation-threads --title 'feat: named conversation threads — save and load chat history' --body ' *)",
+      "Bash(git stash *)"
+    ]
+  }
+}
