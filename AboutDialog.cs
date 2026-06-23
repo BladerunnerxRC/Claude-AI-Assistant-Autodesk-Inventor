@@ -18,16 +18,13 @@ namespace ClaudeForInventor
             BackColor       = Color.FromArgb(30, 30, 30);
             ForeColor       = Color.FromArgb(218, 218, 218);
 
-            // Coral "C" logo
-            var logo = new Label
+            // Flower logo
+            var logo = new PictureBox
             {
-                Text      = "C",
-                Font      = new Font("Segoe UI", 28f, FontStyle.Bold),
-                ForeColor = Color.White,
-                BackColor = Color.FromArgb(204, 75, 55),
-                Width     = 60, Height = 60,
-                Left      = 20, Top = 20,
-                TextAlign = ContentAlignment.MiddleCenter
+                Width    = 60, Height = 60,
+                Left     = 20, Top    = 20,
+                Image    = AppIcon.Make(60),
+                SizeMode = PictureBoxSizeMode.StretchImage
             };
 
             var title = new Label

@@ -175,6 +175,7 @@ namespace ClaudeForInventor
             _dockWin.DisableCloseButton    = false;
             _dockWin.DockingState          = DockingStateEnum.kDockRight;
             _dockWin.Width                 = 540;
+            _dockWin.Visible               = false;  // always start hidden; user opens via toolbar
         }
 
         // ──────────────────────────────────────────────────────────────────────
@@ -183,16 +184,7 @@ namespace ClaudeForInventor
 
         private stdole.IPictureDisp MakeIconPicture()
         {
-            using var bmp = new Bitmap(32, 32);
-            using (var g = Graphics.FromImage(bmp))
-            {
-                g.Clear(System.Drawing.Color.FromArgb(204, 75, 55));   // Anthropic coral
-                g.FillEllipse(Brushes.White,
-                    new RectangleF(4, 4, 24, 24));
-                using var f = new Font("Segoe UI", 11f, FontStyle.Bold);
-                g.DrawString("C", f, new SolidBrush(System.Drawing.Color.FromArgb(204, 75, 55)),
-                    new PointF(9f, 7f));
-            }
+            using var bmp = AppIcon.Make(32);
             return AxHostConverter.GetIPictureDisp(bmp);
         }
 
