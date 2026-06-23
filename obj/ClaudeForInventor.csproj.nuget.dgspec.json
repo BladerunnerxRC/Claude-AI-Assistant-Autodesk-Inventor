@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\Thoma\\OneDrive\\Documents\\GitHub\\Claude-AI-Assistant-Autodesk-Inventor\\ClaudeForInventor.csproj": {}
+    "C:\\Users\\Thoma\\OneDrive\\Documents\\GitHub\\Claude-AI-Assistant-Autodesk-Inventor\\ClaudeForInventor.csproj": {}
   },
   "projects": {
-    "c:\\Users\\Thoma\\OneDrive\\Documents\\GitHub\\Claude-AI-Assistant-Autodesk-Inventor\\ClaudeForInventor.csproj": {
+    "C:\\Users\\Thoma\\OneDrive\\Documents\\GitHub\\Claude-AI-Assistant-Autodesk-Inventor\\ClaudeForInventor.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\Thoma\\OneDrive\\Documents\\GitHub\\Claude-AI-Assistant-Autodesk-Inventor\\ClaudeForInventor.csproj",
+        "projectUniqueName": "C:\\Users\\Thoma\\OneDrive\\Documents\\GitHub\\Claude-AI-Assistant-Autodesk-Inventor\\ClaudeForInventor.csproj",
         "projectName": "ClaudeForInventor",
-        "projectPath": "c:\\Users\\Thoma\\OneDrive\\Documents\\GitHub\\Claude-AI-Assistant-Autodesk-Inventor\\ClaudeForInventor.csproj",
+        "projectPath": "C:\\Users\\Thoma\\OneDrive\\Documents\\GitHub\\Claude-AI-Assistant-Autodesk-Inventor\\ClaudeForInventor.csproj",
         "packagesPath": "C:\\Users\\Thoma\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\Thoma\\OneDrive\\Documents\\GitHub\\Claude-AI-Assistant-Autodesk-Inventor\\obj\\",
+        "outputPath": "C:\\Users\\Thoma\\OneDrive\\Documents\\GitHub\\Claude-AI-Assistant-Autodesk-Inventor\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
