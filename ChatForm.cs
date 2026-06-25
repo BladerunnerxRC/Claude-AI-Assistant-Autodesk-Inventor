@@ -30,6 +30,16 @@ namespace ClaudeForInventor
         private readonly Label                 _contextLabel;
         private readonly ToolStripStatusLabel  _statusLabel;
         private readonly ToolStripStatusLabel  _modelLabel;
+        private readonly FlowLayoutPanel       _fileChipsPanel;
+        private readonly Button                _attachBtn;
+        private readonly List<(string Name, string Content)> _attachedFiles = new List<(string, string)>();
+
+        private static readonly HashSet<string> TextExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".txt", ".cs", ".vb", ".js", ".ts", ".json", ".xml", ".yaml", ".yml",
+            ".md", ".csv", ".html", ".htm", ".css", ".sql", ".py", ".bat", ".ps1",
+            ".ini", ".cfg", ".log", ".ilogic", ".xaml", ".ipt", ".iam"
+        };
 
         // ── Colors ────────────────────────────────────────────────────────────
         private static readonly Color BgBase      = Color.FromArgb(24, 24, 24);
@@ -116,23 +126,26 @@ namespace ClaudeForInventor
             var inputPanel = new Panel { Height = 90, BackColor = BgPanel, Padding = new Padding(8) };
             _inputBox = new TextBox
             {
-                Multiline   = true,
-                BackColor   = BgInput,
-                ForeColor   = TextMain,
-                BorderStyle = BorderStyle.None,
-                ScrollBars  = ScrollBars.Vertical,
-                Font        = new Font("Segoe UI", 9.5f),
-                Dock        = DockStyle.Fill,
-                AcceptsReturn = true        // Shift+Enter = newline; Enter = send (handled below)
+                Multiline     = true,
+                BackColor     = BgInput,
+                ForeColor     = TextMain,
+                BorderStyle   = BorderStyle.None,
+                ScrollBars    = ScrollBars.Vertical,
+                Font          = new Font("Segoe UI", 9.5f),
+                Dock          = DockStyle.Fill,
+                AcceptsReturn = true,
+                AllowDrop     = true
             };
-            _inputBox.KeyDown += OnInputKeyDown;
-            _inputBox.ContextMenuStrip = BuildInputContextMenu();
+            _inputBox.KeyDown          += OnInputKeyDown;
+            _inputBox.ContextMenuStrip  = BuildInputContextMenu();
+            _inputBox.DragEnter        += OnInputDragEnter;
+            _inputBox.DragDrop         += OnInputDragDrop;
 
             _sendBtn = new Button
             {
                 Text      = "Send",
-                Width     = 64,
-                Dock      = DockStyle.Right,
+                Height    = 50,
+                Dock      = DockStyle.Top,
                 BackColor = Coral,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -142,8 +155,27 @@ namespace ClaudeForInventor
             _sendBtn.FlatAppearance.BorderSize = 0;
             _sendBtn.FlatAppearance.MouseOverBackColor = Color.FromArgb(220, 95, 70);
             _sendBtn.Click += (_, __) => SendMessage();
+
+            _attachBtn = new Button
+            {
+                Text      = "📎",
+                Dock      = DockStyle.Fill,
+                BackColor = Color.FromArgb(50, 50, 50),
+                ForeColor = Color.FromArgb(180, 180, 180),
+                FlatStyle = FlatStyle.Flat,
+                Font      = new Font("Segoe UI", 8.5f),
+                Cursor    = Cursors.Hand
+            };
+            _attachBtn.FlatAppearance.BorderSize = 0;
+            _attachBtn.FlatAppearance.MouseOverBackColor = Color.FromArgb(70, 70, 70);
+            _attachBtn.Click += (_, __) => BrowseForFiles();
+
+            var btnColumn = new Panel { Width = 64, Dock = DockStyle.Right, BackColor = BgPanel };
+            btnColumn.Controls.Add(_attachBtn);   // Fill — added first, ends at higher index
+            btnColumn.Controls.Add(_sendBtn);     // Top  — added second, ends at index 0
+
             inputPanel.Controls.Add(_inputBox);
-            inputPanel.Controls.Add(_sendBtn);
+            inputPanel.Controls.Add(btnColumn);
 
             // ── Context panel ─────────────────────────────────────────────────
             var contextPanel = new Panel { Height = 40, BackColor = Color.FromArgb(30, 38, 48), Padding = new Padding(10, 6, 10, 6) };
@@ -168,20 +200,40 @@ namespace ClaudeForInventor
                 BorderStyle = BorderStyle.None,
                 ScrollBars  = RichTextBoxScrollBars.Vertical,
                 WordWrap    = true,
-                Padding     = new Padding(8)
+                Padding     = new Padding(8),
+                AllowDrop   = true
             };
-            _chatBox.ContextMenuStrip = BuildChatContextMenu();
+            _chatBox.ContextMenuStrip  = BuildChatContextMenu();
+            _chatBox.DragEnter        += OnFileDragEnter;
+            _chatBox.DragDrop         += OnFileDragDrop;
 
-            // ── Dock order (bottom-to-top): strip → toolbar → input → context → fill ──
-            statusStrip.Dock  = DockStyle.Bottom;
-            toolbar.Dock      = DockStyle.Bottom;
-            inputPanel.Dock   = DockStyle.Bottom;
-            contextPanel.Dock = DockStyle.Top;
-            _chatBox.Dock     = DockStyle.Fill;
+            // ── File attachment strip ─────────────────────────────────────────
+            _fileChipsPanel = new FlowLayoutPanel
+            {
+                Height       = 28,
+                BackColor    = Color.FromArgb(28, 32, 42),
+                Padding      = new Padding(6, 3, 6, 3),
+                Visible      = false,
+                WrapContents = false
+            };
+
+            // ── Form-level drag-and-drop ──────────────────────────────────────
+            AllowDrop  = true;
+            DragEnter += OnFileDragEnter;
+            DragDrop  += OnFileDragDrop;
+
+            // ── Dock order (bottom-to-top): strip → toolbar → chips → input → context → fill ──
+            statusStrip.Dock       = DockStyle.Bottom;
+            toolbar.Dock           = DockStyle.Bottom;
+            _fileChipsPanel.Dock   = DockStyle.Bottom;
+            inputPanel.Dock        = DockStyle.Bottom;
+            contextPanel.Dock      = DockStyle.Top;
+            _chatBox.Dock          = DockStyle.Fill;
 
             Controls.Add(_chatBox);
             Controls.Add(contextPanel);
             Controls.Add(inputPanel);
+            Controls.Add(_fileChipsPanel);
             Controls.Add(toolbar);
             Controls.Add(statusStrip);
 
@@ -219,11 +271,16 @@ namespace ClaudeForInventor
 
         private async void SendMessage()
         {
-            var text = _inputBox.Text.Trim();
-            if (string.IsNullOrEmpty(text)) return;
+            var userText = _inputBox.Text.Trim();
+            if (string.IsNullOrEmpty(userText) && _attachedFiles.Count == 0) return;
 
             _inputBox.Clear();
-            AppendUser(text);
+
+            // Chat shows typed text + file name badges; API gets full file contents
+            AppendUser(BuildDisplayText(userText));
+            var apiText = BuildApiText(userText);
+            ClearAttachments();
+
             SetBusy(true);
 
             try
@@ -235,7 +292,7 @@ namespace ClaudeForInventor
                 var rtfSnapshot = _chatBox.Rtf;
                 bool firstChunk = true;
 
-                var reply = await _api.SendAsync(text, _history, _documentContext, chunk =>
+                var reply = await _api.SendAsync(apiText, _history, _documentContext, chunk =>
                 {
                     void Apply()
                     {
@@ -251,7 +308,7 @@ namespace ClaudeForInventor
                     else Apply();
                 });
 
-                _history.Add(new ChatMessage("user",      text));
+                _history.Add(new ChatMessage("user",      apiText));
                 _history.Add(new ChatMessage("assistant", reply));
                 _exportBtn.Enabled = true;
 
@@ -278,6 +335,7 @@ namespace ClaudeForInventor
         {
             _history.Clear();
             _chatBox.Clear();
+            ClearAttachments();
             _lastCode            = null;
             _lastCodeLanguage    = "Code";
             _copyCodeBtn .Enabled   = false;
@@ -991,6 +1049,153 @@ namespace ClaudeForInventor
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        // File attachments
+        // ─────────────────────────────────────────────────────────────────────
+
+        private void BrowseForFiles()
+        {
+            using var dlg = new OpenFileDialog
+            {
+                Title       = "Attach file(s) for reference",
+                Multiselect = true,
+                Filter      = "All files (*.*)|*.*|Text & code (*.txt;*.cs;*.vb;*.md;*.json;*.xml)|*.txt;*.cs;*.vb;*.md;*.json;*.xml|Data (*.csv;*.yaml;*.yml)|*.csv;*.yaml;*.yml"
+            };
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+                AttachFiles(dlg.FileNames);
+        }
+
+        private void AttachFiles(string[] paths)
+        {
+            const int MaxBytes = 50_000;
+            foreach (var path in paths)
+            {
+                var name = System.IO.Path.GetFileName(path);
+                if (_attachedFiles.Exists(f => f.Name == name)) continue;
+
+                string content;
+                var ext = System.IO.Path.GetExtension(path);
+                if (TextExtensions.Contains(ext))
+                {
+                    try
+                    {
+                        var raw = System.IO.File.ReadAllText(path, Encoding.UTF8);
+                        content = raw.Length > MaxBytes
+                            ? raw.Substring(0, MaxBytes) + $"\n… [truncated — {raw.Length:N0} chars total]"
+                            : raw;
+                    }
+                    catch (Exception ex) { content = $"[Could not read file: {ex.Message}]"; }
+                }
+                else
+                {
+                    try { content = $"[Binary file: {name} — {new System.IO.FileInfo(path).Length:N0} bytes]"; }
+                    catch { content = $"[Binary file: {name}]"; }
+                }
+
+                _attachedFiles.Add((name, content));
+                AddFileChip(name);
+            }
+            _fileChipsPanel.Visible = _attachedFiles.Count > 0;
+        }
+
+        private void AddFileChip(string name)
+        {
+            var chip = new Button
+            {
+                Text      = $"{name}  ✕",
+                AutoSize  = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                BackColor = Color.FromArgb(40, 60, 92),
+                ForeColor = Color.FromArgb(160, 210, 255),
+                FlatStyle = FlatStyle.Flat,
+                Font      = new Font("Segoe UI", 7.5f),
+                Cursor    = Cursors.Hand,
+                Height    = 20,
+                Margin    = new Padding(0, 0, 4, 0),
+                Padding   = new Padding(4, 0, 4, 0)
+            };
+            chip.FlatAppearance.BorderColor = Color.FromArgb(60, 90, 130);
+            chip.FlatAppearance.BorderSize  = 1;
+            chip.FlatAppearance.MouseOverBackColor = Color.FromArgb(55, 80, 115);
+            chip.Click += (_, __) => RemoveAttachment(name, chip);
+            _fileChipsPanel.Controls.Add(chip);
+        }
+
+        private void RemoveAttachment(string name, Control chip)
+        {
+            _attachedFiles.RemoveAll(f => f.Name == name);
+            _fileChipsPanel.Controls.Remove(chip);
+            chip.Dispose();
+            _fileChipsPanel.Visible = _attachedFiles.Count > 0;
+        }
+
+        private void ClearAttachments()
+        {
+            _attachedFiles.Clear();
+            foreach (Control c in _fileChipsPanel.Controls) c.Dispose();
+            _fileChipsPanel.Controls.Clear();
+            _fileChipsPanel.Visible = false;
+        }
+
+        private string BuildDisplayText(string userText)
+        {
+            if (_attachedFiles.Count == 0) return userText;
+            var names = _attachedFiles.ConvertAll(f => f.Name);
+            var badge = "📎 " + string.Join(", ", names);
+            return string.IsNullOrEmpty(userText) ? badge : $"{userText}\n{badge}";
+        }
+
+        private string BuildApiText(string userText)
+        {
+            if (_attachedFiles.Count == 0) return userText;
+            var sb = new StringBuilder();
+            foreach (var (name, content) in _attachedFiles)
+            {
+                sb.AppendLine($"<file name=\"{name}\">");
+                sb.AppendLine(content);
+                sb.AppendLine("</file>");
+            }
+            if (!string.IsNullOrEmpty(userText))
+            {
+                sb.AppendLine();
+                sb.Append(userText);
+            }
+            return sb.ToString().TrimEnd();
+        }
+
+        private void OnFileDragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effect = DragDropEffects.Copy;
+        }
+
+        private void OnFileDragDrop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                AttachFiles((string[])e.Data.GetData(DataFormats.FileDrop));
+        }
+
+        private void OnInputDragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effect = DragDropEffects.Copy;
+            else if (e.Data.GetDataPresent(DataFormats.UnicodeText) || e.Data.GetDataPresent(DataFormats.Text))
+                e.Effect = DragDropEffects.Copy;
+        }
+
+        private void OnInputDragDrop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                AttachFiles((string[])e.Data.GetData(DataFormats.FileDrop));
+            }
+            else
+            {
+                var text = (e.Data.GetData(DataFormats.UnicodeText) ?? e.Data.GetData(DataFormats.Text)) as string;
+                if (text != null) _inputBox.SelectedText = text;
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
         // Helpers
         // ─────────────────────────────────────────────────────────────────────
 
@@ -1010,6 +1215,8 @@ namespace ClaudeForInventor
             menu.Items.Add(new ToolStripMenuItem("Paste",      null, (_, __) => _inputBox.Paste())      { Name = "Paste"     });
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(new ToolStripMenuItem("Select All", null, (_, __) => _inputBox.SelectAll())  { Name = "SelectAll" });
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(new ToolStripMenuItem("📎 Attach File…", null, (_, __) => BrowseForFiles()) { Name = "AttachFile" });
             return menu;
         }
 

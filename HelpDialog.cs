@@ -115,6 +115,15 @@ namespace ClaudeForInventor
             Bullet("Shift + Enter — inserts a newline within the message.");
             Bullet("The Send button always works regardless of keyboard focus.");
             NL();
+            H3("Attaching files for reference");
+            Body("You can give Claude any external file as reference material three ways:");
+            Bullet("Drag & drop — drag one or more files from Explorer and drop them anywhere on the panel.");
+            Bullet("📎 button — click the paperclip below the Send button to browse and pick files.");
+            Bullet("Right-click the input box and choose  📎 Attach File…");
+            Body("Attached files appear as blue chips in the strip above the toolbar. Click any chip to remove it before sending.");
+            Body("Text and code files are read and sent in full (up to 50 KB each). Binary files are referenced by name and size only.");
+            Dim("Supported text types: .txt .cs .vb .js .ts .json .xml .yaml .md .csv .html .css .sql .py .bat .ps1 .ini .cfg .log .ilogic .xaml");
+            NL();
             H3("Document context");
             Body("Every message automatically includes a snapshot of the active document:");
             Bullet("Part — user parameters, model parameters, features, active sketch, material, iProperties.");
@@ -131,7 +140,7 @@ namespace ClaudeForInventor
             // ── Toolbar Buttons ──────────────────────────────────────────────
             H2("Toolbar Buttons");
             H3("New Chat");
-            Body("Clears the conversation history and resets the panel to start a fresh session.");
+            Body("Clears the conversation history, attached files, and resets the panel to start a fresh session.");
             NL();
             H3("Copy Code  /  Copy iLogic  /  Copy VB");
             Body("Activates when Claude responds with a code block. Copies the first code block to the clipboard. The label reflects the detected language (iLogic, VB, C#, etc.).");
@@ -157,6 +166,9 @@ namespace ClaudeForInventor
             Bullet("Settings… — enter or update your Anthropic API key.");
             Bullet("About — version and model information.");
             Bullet("Help — this window.");
+            Bullet("💾 Save Conversation… — save the current chat to a named file for later.");
+            Bullet("📂 Load Conversation… — reopen a previously saved conversation and continue it.");
+            Dim("Conversations are saved as JSON files in your AppData\\Roaming\\ClaudeForInventor folder.");
 
             // ── iLogic Generation ────────────────────────────────────────────
             H2("iLogic Generation");
@@ -166,6 +178,9 @@ namespace ClaudeForInventor
             Body("When Claude responds, the  Copy iLogic  and  ▶ Run iLogic  buttons activate.");
             Bullet("Copy iLogic — paste into the Inventor iLogic editor manually.");
             Bullet("▶ Run iLogic — execute immediately without opening the editor.");
+            NL();
+            Body("To reference an existing rule, attach the  .ilogic  file before asking Claude to modify it:");
+            Code("\"Update the attached rule to also suppress Chamfer_C1 when Depth < 20 mm\"");
 
             // ── Parameter Write-Back ─────────────────────────────────────────
             H2("Parameter Write-Back");
@@ -178,12 +193,22 @@ namespace ClaudeForInventor
             Code("Thickness = 3 mm");
             Body("Click  Apply Params  to write these directly to the model. Inventor recalculates immediately.");
 
+            // ── File Reference Examples ───────────────────────────────────────
+            H2("File Reference Examples");
+            Body("Attach any text or data file to give Claude extra context beyond the live document:");
+            Bullet("Attach a  .csv  spec sheet: \"Does my current Width parameter meet this spec?\"");
+            Bullet("Attach a  .json  config: \"Generate an iLogic rule that reads these values.\"");
+            Bullet("Attach a  .txt  customer requirement: \"Summarise what design changes are needed.\"");
+            Bullet("Attach multiple  .cs  or  .vb  files: \"Review these for consistency.\"");
+            Dim("File contents are included in the message sent to Claude but are not stored in the conversation history beyond that turn.");
+
             // ── Tips ─────────────────────────────────────────────────────────
             H2("Tips & Tricks");
             Bullet("Name your parameters clearly — Claude references them by name from the live context.");
             Bullet("Select a specific feature or face before asking for advice to get targeted answers.");
             Bullet("Use New Chat between unrelated topics to keep context relevant.");
             Bullet("Export the chat as .md after a complex design session to keep a record.");
+            Bullet("Save long sessions via  ⚙ → Save Conversation…  so you can pick up where you left off.");
             Bullet("If Run iLogic fails, check the error message in the chat — it will name the missing parameter or API call.");
             Bullet("The panel docks right by default but can be dragged to any side or floated.");
             NL();
