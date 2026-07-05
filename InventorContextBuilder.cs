@@ -120,9 +120,24 @@ namespace ClaudeForInventor
             {
                 var editObj = StandardAddInServer.InventorApp?.ActiveEditObject;
                 if (editObj is PlanarSketch sketch)
-                    sb.AppendLine($"\nActive Sketch: {sketch.Name}  " +
-                        $"({sketch.SketchLines.Count} lines, " +
-                        $"{sketch.SketchCircles.Count} circles)");
+                {
+                    var sketchSb = new StringBuilder();
+                    sketchSb.Append($"\nActive Sketch: {sketch.Name}  (");
+                    sketchSb.Append($"{sketch.SketchLines.Count} lines");
+                    sketchSb.Append($", {sketch.SketchCircles.Count} circles");
+                    if (sketch.SketchArcs.Count > 0)
+                        sketchSb.Append($", {sketch.SketchArcs.Count} arcs");
+                    if (sketch.SketchEllipses.Count > 0)
+                        sketchSb.Append($", {sketch.SketchEllipses.Count} ellipses");
+                    if (sketch.SketchSplines.Count > 0)
+                        sketchSb.Append($", {sketch.SketchSplines.Count} splines");
+                    int gcCount = 0;
+                    try { foreach (GeometricConstraint _ in sketch.GeometricConstraints) gcCount++; } catch { }
+                    if (gcCount > 0)
+                        sketchSb.Append($", {gcCount} geometric constraints");
+                    sketchSb.Append(")");
+                    sb.AppendLine(sketchSb.ToString());
+                }
             }
             catch { /* ActiveEditObject not always available */ }
 
