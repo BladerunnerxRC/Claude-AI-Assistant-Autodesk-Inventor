@@ -148,7 +148,20 @@ namespace ClaudeForInventor
             {
                 if (++shown > MaxOccurrences) { sb.AppendLine("  … (truncated)"); break; }
                 var grounded = occ.Grounded ? " [grounded]" : "";
-                sb.AppendLine($"  {occ.Name}{grounded}");
+                string extra = "";
+                try
+                {
+                    var occDoc = occ.Definition?.Document;
+                    if (occDoc is AssemblyDocument subAsm)
+                        extra = $" [sub-asm: {subAsm.ComponentDefinition.Occurrences.Count} components]";
+                    else if (occDoc is PartDocument part)
+                    {
+                        var mat = part.ComponentDefinition.Material?.Name;
+                        if (!string.IsNullOrEmpty(mat)) extra = $" [{mat}]";
+                    }
+                }
+                catch { }
+                sb.AppendLine($"  {occ.Name}{grounded}{extra}");
             }
 
             // ── Constraints ───────────────────────────────────────────────────
