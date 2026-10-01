@@ -1,0 +1,11 @@
+# Build intermediates (contain absolute local paths)
+obj/
+bin/Debug/
+
+# Visual Studio
+.vs/
+*.user
+
+# Claude Code: agent worktrees and per-machine approvals
+.claude/worktrees/
+.claude/settings.local.json
